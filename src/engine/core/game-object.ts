@@ -16,7 +16,7 @@ export interface Movable {
   velocities: Vector2;
 }
 
-export interface Drawables {
+export interface Drawable {
   color: string;
   h: number;
   w: number;

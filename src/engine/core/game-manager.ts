@@ -3,35 +3,39 @@ import {
   type Renderer,
 } from "../graphics/2d-canvas-renderer";
 import type { RendererKind } from "../graphics/types";
-import { MovementSystem } from "../systems/movement/movement-system";
-import { RenderingSystem } from "../systems/rendering-system";
-import type { Movable, Position, Drawables, Transform } from "./game-object";
+import {
+  isRenderingComponent,
+  type LogicComponent,
+  type GameComponent,
+  type RenderingComponent,
+  isLogicComponent,
+  type Component,
+} from "../components/components";
+import type { Movable, Position, Drawable, Transform } from "./game-object";
 
 export type EntityId = number;
+export type WorldStorageId = number;
 
 /**
  * A game world, stores all data in the world
  */
-export class GameWorld {
+export class GameWorld<StorageKey extends string> {
+  #components = new Map<StorageKey, Map<EntityId, any>>();
+
   #positions = new Map<EntityId, Position>();
-  #transformable = new Map<EntityId, Transform>();
   #movables = new Map<EntityId, Movable>();
-  #drawables = new Map<EntityId, Drawables>();
+  #drawables = new Map<EntityId, Drawable>();
+
+  #nextId = 0;
 
   constructor() {}
 
-  #nextId: EntityId = 0;
-
-  createEntity(): EntityId {
+  createEntity() {
     return this.#nextId++;
   }
 
   get positions() {
     return this.#positions;
-  }
-
-  get transforms() {
-    return this.#transformable;
   }
 
   get movables() {
@@ -40,6 +44,13 @@ export class GameWorld {
 
   get drawables() {
     return this.#drawables;
+  }
+
+  protected addStorage<T>(name: StorageKey) {
+    this.#components.set(name, new Map<EntityId, T>());
+  }
+  protected getStorage<T>(name: StorageKey) {
+    return this.#components.get(name) as Map<EntityId, T>;
   }
 }
 
@@ -61,25 +72,27 @@ export abstract class Game implements GameManager {
   #renderer: Renderer;
 
   #parentElement;
-  #world = new GameWorld();
 
-  #renderingSystem: RenderingSystem;
-  #movementSystem: MovementSystem;
+  #renderingComponents: RenderingComponent[] = [];
+  #logicComponents: LogicComponent[] = [];
 
   constructor(config: GameManagerConfig) {
     this.#parentElement = config.parentElement;
     this.#renderer = this.#setupRenderer(config.renderer);
-
-    this.#renderingSystem = new RenderingSystem(this.#world);
-    this.#movementSystem = new MovementSystem(this.#world);
-  }
-
-  get world() {
-    return this.#world;
   }
 
   start(): void {
     this.#loop(0);
+  }
+
+  protected registerComponents(component: Component) {
+    if (isLogicComponent(component)) {
+      this.#logicComponents.push(component);
+    }
+
+    if (isRenderingComponent(component)) {
+      this.#renderingComponents.push(component);
+    }
   }
 
   /**
@@ -110,7 +123,7 @@ export abstract class Game implements GameManager {
 
     this.#renderer.clear();
     this.#update(deltaTime);
-    this.#draw();
+    this.#draw(this.#renderer);
 
     window.requestAnimationFrame(this.#loop.bind(this));
   }
@@ -120,13 +133,17 @@ export abstract class Game implements GameManager {
    * @param deltaTime
    */
   #update(deltaTime: number) {
-    this.#movementSystem.update(deltaTime);
+    for (const logic of this.#logicComponents) {
+      logic.update(deltaTime);
+    }
   }
 
   /**
    * Draws to the screen
    */
-  #draw() {
-    this.#renderingSystem.draw(this.#renderer);
+  #draw(renderer: Renderer) {
+    for (const renderSystem of this.#renderingComponents) {
+      renderSystem.draw(renderer);
+    }
   }
 }
