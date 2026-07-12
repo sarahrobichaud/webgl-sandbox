@@ -1,15 +1,7 @@
-import { GameWorld } from "../engine/core/game-manager";
+import { GameWorld } from "../engine/core/world";
+import type { Grid } from "./grid/grid";
 
 export type WorldStorage = "grids";
-export interface Tile {
-  color: string;
-}
-
-export interface Grid {
-  x: number;
-  y: number;
-  tiles: Tile;
-}
 
 /**
  * A game world, stores all data in the world

@@ -1,3 +1,4 @@
+import { mat4, vec3, vec4 } from "gl-matrix";
 import { GameComponent } from "../../engine/components/components";
 import type { World, WorldStorage } from "../world";
 
@@ -7,13 +8,9 @@ export class MovementSystem extends GameComponent<WorldStorage> {
   }
 
   update(deltaTime: number) {
-    for (const [entity, movables] of this.world.movables) {
-      const position = this.world.positions.get(entity);
-
-      if (position) {
-        position.x += movables.velocities.x;
-        position.y += movables.velocities.y;
-      }
+    for (const [
+      entity, movables,
+    ] of this.world.movables) {
     }
   }
 }

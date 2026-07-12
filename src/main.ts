@@ -9,7 +9,7 @@ if (!appElement || !(appElement instanceof HTMLElement)) {
 
 const game = new AeroSys({
   gameConfig: {
-    renderer: "canvas-2d",
+    renderer: "web-gl",
     parentElement: appElement,
   },
 });

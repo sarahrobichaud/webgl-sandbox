@@ -1,58 +1,9 @@
-import {
-  CanvasRenderer2D,
-  type Renderer,
-} from "../graphics/2d-canvas-renderer";
-import type { RendererKind } from "../graphics/types";
-import {
-  isRenderingComponent,
-  type LogicComponent,
-  type GameComponent,
-  type RenderingComponent,
-  isLogicComponent,
-  type Component,
-} from "../components/components";
-import type { Movable, Position, Drawable, Transform } from "./game-object";
-
-export type EntityId = number;
-export type WorldStorageId = number;
-
-/**
- * A game world, stores all data in the world
- */
-export class GameWorld<StorageKey extends string> {
-  #components = new Map<StorageKey, Map<EntityId, any>>();
-
-  #positions = new Map<EntityId, Position>();
-  #movables = new Map<EntityId, Movable>();
-  #drawables = new Map<EntityId, Drawable>();
-
-  #nextId = 0;
-
-  constructor() {}
-
-  createEntity() {
-    return this.#nextId++;
-  }
-
-  get positions() {
-    return this.#positions;
-  }
-
-  get movables() {
-    return this.#movables;
-  }
-
-  get drawables() {
-    return this.#drawables;
-  }
-
-  protected addStorage<T>(name: StorageKey) {
-    this.#components.set(name, new Map<EntityId, T>());
-  }
-  protected getStorage<T>(name: StorageKey) {
-    return this.#components.get(name) as Map<EntityId, T>;
-  }
-}
+import { CanvasRenderer2D } from "../graphics/2d-canvas-renderer";
+import type { Renderer, RendererKind } from "../graphics/types";
+import { isRenderingComponent, type LogicComponent, type RenderingComponent, isLogicComponent, type Component, InternalComponent, type RenderingPipelineComponent } from "../components/components";
+import { WebGlRenderer } from "../graphics/web-gl-renderer";
+import { Transformer } from "../graphics/render/render-transforms";
+import type { GameWorld } from "./world";
 
 /**
  * Game Manager
@@ -76,9 +27,20 @@ export abstract class Game implements GameManager {
   #renderingComponents: RenderingComponent[] = [];
   #logicComponents: LogicComponent[] = [];
 
+  #renderingPipeline = [
+    Transformer,
+  ];
+  #internalRenderingComponents: RenderingPipelineComponent[] = [];
+
+  #world: GameWorld<string> | null = null;
+
   constructor(config: GameManagerConfig) {
     this.#parentElement = config.parentElement;
     this.#renderer = this.#setupRenderer(config.renderer);
+
+    for (const Component of this.#renderingPipeline) {
+      this.#internalRenderingComponents.push(new Component());
+    }
   }
 
   start(): void {
@@ -95,6 +57,10 @@ export abstract class Game implements GameManager {
     }
   }
 
+  protected loadWorld(gameWorld: GameWorld<string>) {
+    this.#world = gameWorld;
+  }
+
   /**
    * Setups the renderer
    *
@@ -106,8 +72,13 @@ export abstract class Game implements GameManager {
    * @returns
    */
   #setupRenderer(renderer: RendererKind) {
+    console.log(this);
     if (renderer === "canvas-2d") {
       return new CanvasRenderer2D(this.#parentElement);
+    }
+
+    if (renderer === "web-gl") {
+      return new WebGlRenderer(this.#parentElement);
     }
 
     throw new Error("Only canvas-2d is supported");
@@ -122,8 +93,11 @@ export abstract class Game implements GameManager {
     this.#lastTime = timeStamp;
 
     this.#renderer.clear();
-    this.#update(deltaTime);
-    this.#draw(this.#renderer);
+
+    if (this.#world) {
+      this.#update(deltaTime);
+      this.#draw(this.#renderer);
+    }
 
     window.requestAnimationFrame(this.#loop.bind(this));
   }
@@ -142,6 +116,14 @@ export abstract class Game implements GameManager {
    * Draws to the screen
    */
   #draw(renderer: Renderer) {
+    if (!this.#world) {
+      return;
+    }
+
+    for (const internalSystem of this.#internalRenderingComponents) {
+      internalSystem.update(this.#world.entities.values(), this.#world.primitives, this.#world.renderMatrices);
+    }
+
     for (const renderSystem of this.#renderingComponents) {
       renderSystem.draw(renderer);
     }

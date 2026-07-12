@@ -1,9 +1,6 @@
-import {
-  Game,
-  type EntityId,
-  type GameManagerConfig,
-} from "../engine/core/game-manager";
-import { Vector2 } from "../engine/core/vector";
+import { vec3 } from "gl-matrix";
+import { Game, type GameManagerConfig } from "../engine/core/game-manager";
+import type { EntityId } from "../engine/core/types";
 import { MovementSystem } from "./systems/movement-system";
 import { RenderingSystem } from "./systems/rendering-system";
 import { World } from "./world";
@@ -18,19 +15,23 @@ export class AeroSys extends Game {
   constructor(config: AeroSysConfig) {
     super(config.gameConfig);
 
-    const components = [MovementSystem, RenderingSystem];
+    const components = [
+      MovementSystem, RenderingSystem,
+    ];
 
     for (const Component of components) {
       this.registerComponents(new Component(this.#world));
     }
 
-    const tile1 = this.#createTile(this.#world, 0, 0);
+    this.#createTile(this.#world, 0, 0);
+    this.loadWorld(this.#world);
   }
 
   #createTile(world: World, x: number, y: number): EntityId {
     const id = world.createEntity();
-    world.positions.set(id, { x, y });
-    world.movables.set(id, { velocities: new Vector2(1, 1) });
+    world.positions.set(id, { x, y, z: 0 });
+    world.movables.set(id, { velocities: vec3.create() });
+    world.transforms2D.set(id, { rotateX: 0, rotateY: 0, x: 0, y: 0 });
     world.drawables.set(id, { w: 32, h: 32, color: "blue" });
     return id;
   }
