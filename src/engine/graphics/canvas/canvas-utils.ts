@@ -1,7 +1,6 @@
 export const canvasToDisplaySizeMap = new Map<HTMLCanvasElement, number[]>([]);
 
-export function onResize(entries: ResizeObserverEntry[]) {
-  console.log("resize");
+export function measureElement(entries: ResizeObserverEntry[]) {
   for (const entry of entries) {
     let width;
     let height;
@@ -14,13 +13,8 @@ export function onResize(entries: ResizeObserverEntry[]) {
       height = entry.devicePixelContentBoxSize[0].blockSize;
       dpr = 1; // it's already in width and height
     } else if (entry.contentBoxSize) {
-      if (entry.contentBoxSize[0]) {
-        width = entry.contentBoxSize[0].inlineSize;
-        height = entry.contentBoxSize[0].blockSize;
-      } else {
-        width = entry.contentBoxSize.inlineSize;
-        height = entry.contentBoxSize.blockSize;
-      }
+      width = entry.contentBoxSize[0].inlineSize;
+      height = entry.contentBoxSize[0].blockSize;
     } else {
       width = entry.contentRect.width;
       height = entry.contentRect.height;

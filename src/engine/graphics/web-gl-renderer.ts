@@ -1,7 +1,7 @@
 import type { Renderer2D as Renderer3D, Viewport } from "./types";
 import { CUBE_VERTICES, RECT_VERTICES } from "./shapes/vertices";
 import { FRAGMENT_SHADER_SOURCE, VERTEX_SHADER_SOURCE } from "./shaders/shaders";
-import { canvasToDisplaySizeMap, onResize } from "./canvas/canvas-utils";
+import { canvasToDisplaySizeMap, measureElement } from "./canvas/canvas-utils";
 
 function randomColor() {
   return [
@@ -26,7 +26,7 @@ export const ATTRIBUTE = {
 
 export class WebGlRenderer implements Renderer3D {
   #viewport: Viewport = { size: { height: 0, width: 0 } };
-  #ctx: WebGL2RenderingContext;
+  #gl: WebGL2RenderingContext;
   #canvas: HTMLCanvasElement;
 
   #program: WebGLProgram;
@@ -34,61 +34,66 @@ export class WebGlRenderer implements Renderer3D {
   #attributes: Record<keyof typeof ATTRIBUTE, number>;
   #buffers: Record<string, WebGLBuffer>;
 
-  #sizeObserver: ResizeObserver;
-
-  clear(): void {}
+  #vShader: WebGLShader;
+  #fShader: WebGLShader;
 
   constructor(parentElement: HTMLElement) {
     const { canvas } = this.#bootstrap(parentElement);
 
-    const gl = canvas.getContext("webgl2")!;
-
-    this.#ctx = gl;
-
+    this.#gl = canvas.getContext("webgl2")!;
     this.#canvas = canvas;
 
-    const vertexShader = this.#createShader(this.#ctx.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
-    const fragmentShader = this.#createShader(this.#ctx.FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
+    this.#vShader = this.#createShader(this.#gl.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
+    this.#fShader = this.#createShader(this.#gl.FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
 
-    this.#program = this.#createProgram(vertexShader, fragmentShader);
+    this.#program = this.#createProgram(this.#vShader, this.#fShader);
 
     this.#attributes = {
-      A_POSITION: this.#ctx.getAttribLocation(this.#program, ATTRIBUTE.A_POSITION),
+      A_POSITION: this.#gl.getAttribLocation(this.#program, ATTRIBUTE.A_POSITION),
     };
 
     this.#buffers = {
-      positions: this.#ctx.createBuffer(),
+      positions: this.#gl.createBuffer(),
     };
 
     const resizeCallback = (entries: ResizeObserverEntry[]) => {
-      onResize(entries);
+      measureElement(entries);
       this.#resizeCanvasToDisplaySize();
+      this.#gl.viewport(0, 0, this.#gl.canvas.width, this.#gl.canvas.height);
     };
 
-    this.#sizeObserver = new ResizeObserver(resizeCallback);
-    this.#handleResize();
+    const observer = new ResizeObserver(resizeCallback);
+    this.#watchResize(observer);
   }
 
   get viewport() {
     return this.#viewport;
   }
 
+  clear() {
+    this.#gl.clearColor(0, 0, 0, 0);
+    this.#gl.clear(this.#gl.COLOR_BUFFER_BIT);
+  }
+
   rectangle3D() {
-    this.#ctx.bindBuffer(this.#ctx.ARRAY_BUFFER, this.#buffers.positions);
-    this.#ctx.bufferData(this.#ctx.ARRAY_BUFFER, new Float32Array(CUBE_VERTICES), this.#ctx.STATIC_DRAW);
+    this.#gl.bindBuffer(this.#gl.ARRAY_BUFFER, this.#buffers.positions);
+    this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(CUBE_VERTICES), this.#gl.STATIC_DRAW);
 
-    const vao = this.#ctx.createVertexArray();
-    this.#ctx.bindVertexArray(vao);
+    const vao = this.#gl.createVertexArray();
+    this.#gl.bindVertexArray(vao);
 
-    this.#ctx.enableVertexAttribArray(this.#attributes.A_POSITION);
+    this.#gl.enableVertexAttribArray(this.#attributes.A_POSITION);
 
     const size = 3;
-    const type = this.#ctx.FLOAT;
+    const type = this.#gl.FLOAT;
     const normalize = false;
     const stride = 0;
     const offset = 0;
 
-    this.#ctx.vertexAttribPointer(this.#attributes.A_POSITION, size, type, normalize, stride, offset);
+    this.#gl.vertexAttribPointer(this.#attributes.A_POSITION, size, type, normalize, stride, offset);
+
+    this.#gl.useProgram(this.#program);
+    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 3);
   }
 
   rectangle() {}
@@ -104,43 +109,43 @@ export class WebGlRenderer implements Renderer3D {
   }
 
   #createShader(type: number, source: string) {
-    const shader = this.#ctx.createShader(type)!;
-    this.#ctx.shaderSource(shader, source);
-    this.#ctx.compileShader(shader);
+    const shader = this.#gl.createShader(type)!;
+    this.#gl.shaderSource(shader, source);
+    this.#gl.compileShader(shader);
 
-    const success = this.#ctx.getShaderParameter(shader, this.#ctx.COMPILE_STATUS);
+    const success = this.#gl.getShaderParameter(shader, this.#gl.COMPILE_STATUS);
 
     if (!success) {
-      this.#ctx.deleteShader(shader);
-      console.log(this.#ctx.getShaderInfoLog(shader));
+      this.#gl.deleteShader(shader);
+      console.log(this.#gl.getShaderInfoLog(shader));
     }
 
     return shader;
   }
 
   #createProgram(vertexShader: WebGLShader, fragmentShader: WebGLShader) {
-    const program = this.#ctx.createProgram();
-    this.#ctx.attachShader(program, vertexShader);
-    this.#ctx.attachShader(program, fragmentShader);
-    this.#ctx.linkProgram(program);
+    const program = this.#gl.createProgram();
+    this.#gl.attachShader(program, vertexShader);
+    this.#gl.attachShader(program, fragmentShader);
+    this.#gl.linkProgram(program);
 
-    const success = this.#ctx.getProgramParameter(program, this.#ctx.LINK_STATUS);
+    const success = this.#gl.getProgramParameter(program, this.#gl.LINK_STATUS);
 
     if (!success) {
-      this.#ctx.deleteProgram(program);
-      console.log(this.#ctx.getProgramInfoLog(program));
+      this.#gl.deleteProgram(program);
+      console.log(this.#gl.getProgramInfoLog(program));
     }
 
     return program;
   }
 
-  #handleResize() {
+  #watchResize(observer: ResizeObserver) {
     try {
       // only call us of the number of device pixels changed
-      this.#sizeObserver.observe(this.#canvas, { box: "device-pixel-content-box" });
+      observer.observe(this.#canvas, { box: "device-pixel-content-box" });
     } catch (ex) {
       // device-pixel-content-box is not supported so fallback to this
-      this.#sizeObserver.observe(this.#canvas, { box: "content-box" });
+      observer.observe(this.#canvas, { box: "content-box" });
     }
   }
 
