@@ -30,8 +30,14 @@ export class AeroSys extends Game {
   #createTile(world: World, x: number, y: number): EntityId {
     const id = world.createEntity();
     world.positions.set(id, { x, y, z: 0 });
-    world.movables.set(id, { velocities: vec3.create() });
-    world.transforms2D.set(id, { rotateX: 0, rotateY: 0, x: 0, y: 0 });
+    world.movables.set(id, { velocities: vec3.fromValues(2, 1, 0) });
+    world.transforms2D.set(id, {
+      rotateX: 0,
+      rotateY: 0,
+      x: 0,
+      y: 0,
+      isDirty: false,
+    });
     world.drawables.set(id, { w: 32, h: 32, color: "blue" });
     return id;
   }

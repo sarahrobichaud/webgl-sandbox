@@ -12,9 +12,10 @@ export class RenderingSystem extends GameComponent<WorldStorage> {
       entity,
     ] of this.world.drawables) {
       const position = this.world.positions.get(entity);
+      const trans = this.world.transforms2D.get(entity);
 
-      if (position) {
-        renderer.rectangle3D();
+      if (position && trans) {
+        renderer.rectangle3D(position.x, position.y, trans.rotateX);
       }
     }
   }

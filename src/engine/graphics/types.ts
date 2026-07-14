@@ -11,7 +11,7 @@ export interface Renderer2D {
 }
 
 export interface Renderer3D extends Renderer2D {
-  rectangle3D(): void;
+  rectangle3D(x: number, y: number, rotation: number): void;
 }
 
 export type Renderer = Renderer2D | Renderer3D;

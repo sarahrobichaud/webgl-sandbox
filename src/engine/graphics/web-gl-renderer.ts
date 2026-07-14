@@ -24,6 +24,12 @@ export const ATTRIBUTE = {
   A_POSITION: "a_position",
 };
 
+export const UNI = {
+  U_TRANSLATION: "u_translation",
+  U_RESOLUTION: "u_resolution",
+  U_ROTATION: "u_rotation",
+};
+
 export class WebGlRenderer implements Renderer3D {
   #viewport: Viewport = { size: { height: 0, width: 0 } };
   #gl: WebGL2RenderingContext;
@@ -32,6 +38,7 @@ export class WebGlRenderer implements Renderer3D {
   #program: WebGLProgram;
 
   #attributes: Record<keyof typeof ATTRIBUTE, number>;
+  #uniforms: Record<keyof typeof UNI, WebGLUniformLocation>;
   #buffers: Record<string, WebGLBuffer>;
 
   #vShader: WebGLShader;
@@ -50,6 +57,12 @@ export class WebGlRenderer implements Renderer3D {
 
     this.#attributes = {
       A_POSITION: this.#gl.getAttribLocation(this.#program, ATTRIBUTE.A_POSITION),
+    };
+
+    this.#uniforms = {
+      U_TRANSLATION: this.#gl.getUniformLocation(this.#program, UNI.U_TRANSLATION)!,
+      U_RESOLUTION: this.#gl.getUniformLocation(this.#program, UNI.U_RESOLUTION)!,
+      U_ROTATION: this.#gl.getUniformLocation(this.#program, UNI.U_ROTATION)!,
     };
 
     this.#buffers = {
@@ -75,16 +88,16 @@ export class WebGlRenderer implements Renderer3D {
     this.#gl.clear(this.#gl.COLOR_BUFFER_BIT);
   }
 
-  rectangle3D() {
+  rectangle3D(x: number, y: number, rotation: number) {
     this.#gl.bindBuffer(this.#gl.ARRAY_BUFFER, this.#buffers.positions);
-    this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(CUBE_VERTICES), this.#gl.STATIC_DRAW);
+    this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(RECT_VERTICES), this.#gl.STATIC_DRAW);
 
     const vao = this.#gl.createVertexArray();
     this.#gl.bindVertexArray(vao);
 
     this.#gl.enableVertexAttribArray(this.#attributes.A_POSITION);
 
-    const size = 3;
+    const size = 2;
     const type = this.#gl.FLOAT;
     const normalize = false;
     const stride = 0;
@@ -93,7 +106,21 @@ export class WebGlRenderer implements Renderer3D {
     this.#gl.vertexAttribPointer(this.#attributes.A_POSITION, size, type, normalize, stride, offset);
 
     this.#gl.useProgram(this.#program);
-    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 3);
+
+    this.#gl.uniform2f(this.#uniforms.U_RESOLUTION, this.#gl.canvas.width, this.#gl.canvas.height);
+    this.#gl.uniform2fv(
+      this.#uniforms.U_TRANSLATION,
+      [
+        500, 400,
+      ],
+    );
+
+    const angle = (rotation * Math.PI) / 180;
+    this.#gl.uniform2fv(this.#uniforms.U_ROTATION, [
+      Math.sin(angle), Math.cos(angle),
+    ]);
+
+    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 6);
   }
 
   rectangle() {}
