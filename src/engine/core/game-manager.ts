@@ -117,6 +117,8 @@ export abstract class Game implements GameManager {
       return;
     }
 
+    renderer.renderGrid();
+
     renderer.setup("basic");
 
     for (const entity of this.#world.entities) {

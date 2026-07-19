@@ -12,6 +12,7 @@ export interface Renderer3D {
   render(mesh: Mesh, position: Position, transform: Transform3D): void;
   init(meshes: Mesh[]): void;
   setup(program: "basic"): void;
+  renderGrid(): void;
 }
 
 export type Renderer = Renderer3D;

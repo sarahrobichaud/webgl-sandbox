@@ -16,18 +16,18 @@ export class MovementSystem extends GameComponent<WorldStorage> {
       const trans = this.world.transforms2D.get(entity);
       const trans3d = this.world.transform3D.get(entity);
       if (pos) {
-        pos.x += movables.velocities[0];
-        pos.y += movables.velocities[1];
-        pos.z += movables.velocities[2];
+        // pos.x += movables.velocities[0];
+        // pos.y += movables.velocities[1];
+        // pos.z += movables.velocities[2];
       }
 
       if (trans3d) {
-        trans3d.rotateY += 0.2;
-        trans3d.rotateZ += 0.2;
+        // trans3d.rotateY += 0.2;
+        // trans3d.rotateZ += 0.2;
         trans3d.rotateX += 1;
-        trans3d.scaleX = this.#scale;
-        trans3d.scaleZ = this.#scale;
-        trans3d.scaleY = this.#scale;
+        trans3d.scaleX = 50;
+        trans3d.scaleZ = 50;
+        trans3d.scaleY = 50;
       }
 
       if (trans) {

@@ -1,10 +1,12 @@
 import { canvasToDisplaySizeMap, measureElement } from "../canvas/canvas-utils";
 import { shaders } from "./shaders/basic-shader";
 import { mat4, vec3 } from "gl-matrix";
-import type { Position, Transform3D } from "../../core/primitives";
+import { position, transform3D, type Position, type Transform3D } from "../../core/primitives";
 import { AreoGL } from "./webgl-lib/areo-gl";
 import type { AreoProgram, LoadedMesh, Mesh } from "./webgl-lib/areo-types";
 import type { Renderer3D, Viewport } from "../types";
+import { gridShaders } from "./shaders/grid-shader";
+import { MESHES } from "../shapes/mesh";
 
 export class WebGlRenderer implements Renderer3D {
   #viewport: Viewport = { size: { height: 0, width: 0 } };
@@ -14,6 +16,8 @@ export class WebGlRenderer implements Renderer3D {
   #programs: Record<string, AreoProgram> = {};
   #aero: AreoGL;
 
+  #gridMesh = MESHES.plane;
+
   constructor(parentElement: HTMLElement) {
     const { canvas } = this.#bootstrap(parentElement);
 
@@ -22,6 +26,7 @@ export class WebGlRenderer implements Renderer3D {
     this.#aero = new AreoGL(this.#gl);
 
     this.#programs.basic = this.#aero.createProgram("basic", shaders);
+    this.#programs.grid = this.#aero.createProgram("grid", gridShaders);
 
     const resizeCallback = (entries: ResizeObserverEntry[]) => {
       measureElement(entries);
@@ -44,7 +49,10 @@ export class WebGlRenderer implements Renderer3D {
   }
 
   init(meshes: Mesh[]): void {
-    this.#aero.loadGeometry(this.#programs.basic, meshes);
+    this.#aero.loadGeometry(this.#programs.basic, [
+      this.#gridMesh,
+    ]);
+    this.#aero.loadGeometry(this.#programs.grid, meshes);
   }
 
   setStaticUniforms() {
@@ -55,10 +63,31 @@ export class WebGlRenderer implements Renderer3D {
         1, 0, 0.4,
         1,
       ],
-      u_lightDirection: vec3.normalize(vec3.create(), vec3.fromValues(100, -100, 200)),
+      u_lightDirection: vec3.normalize(vec3.create(), vec3.fromValues(1000, -800, -800)),
     };
     this.#gl.uniform4fv(uni.u_color.location, values.u_color);
     this.#gl.uniform3fv(uni.u_reverseLightDirection.location, values.u_lightDirection);
+  }
+
+  #position = position(0, 200, 0);
+  #transform = transform3D(0, 0, 0, 90, 0, 0, 5000, 1000, 1);
+
+  renderGrid() {
+    this.#gl.useProgram(this.#programs.grid.program);
+
+    if (!this.#gridMesh.r_vao) {
+      throw new Error("Grid Mesh not loaded");
+    }
+
+    this.#gl.bindVertexArray(this.#gridMesh.r_vao);
+
+    const { worldViewProjection } = this.#computeDynamicUniforms(this.#position, this.#transform);
+
+    const uni = this.#programs.grid.sharedUniforms;
+
+    this.#gl.uniformMatrix4fv(uni.u_worldViewProjection.location, false, worldViewProjection);
+
+    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, this.#gridMesh.vertices.length / 3);
   }
 
   setup(programName: "basic") {
@@ -85,8 +114,10 @@ export class WebGlRenderer implements Renderer3D {
     const projection = mat4.ortho(mat4.create(), 0, this.#canvas.clientWidth, this.#canvas.clientHeight, 0, -depth, depth);
 
     const camera = mat4.create();
-    mat4.rotateX(camera, camera, (20 * Math.PI) / 180);
-    mat4.translate(camera, camera, vec3.fromValues(0, -600, 0));
+    mat4.rotateX(camera, camera, (70 * Math.PI) / 180);
+    mat4.rotateY(camera, camera, (15 * Math.PI) / 180);
+    mat4.rotateZ(camera, camera, (0 * Math.PI) / 180);
+    mat4.translate(camera, camera, vec3.fromValues(-400, -400, 0));
 
     const view = mat4.invert(mat4.create(), camera)!;
     const viewProjection = mat4.multiply(mat4.create(), projection, view);

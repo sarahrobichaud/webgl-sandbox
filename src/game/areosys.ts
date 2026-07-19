@@ -4,6 +4,7 @@ import type { EntityId } from "../engine/core/types";
 import { MESHES, type MeshId } from "../engine/graphics/shapes/mesh";
 import { MovementSystem } from "./systems/movement-system";
 import { World } from "./world";
+import { MeshSwitchSystem } from "./systems/mesh-switch-system";
 
 export interface AeroSysConfig {
   gameConfig: GameManagerConfig;
@@ -16,7 +17,7 @@ export class AeroSys extends Game {
     super(config.gameConfig);
 
     const components = [
-      MovementSystem,
+      MovementSystem, MeshSwitchSystem,
     ];
 
     for (const Component of components) {
@@ -24,9 +25,9 @@ export class AeroSys extends Game {
     }
 
     this.#registerMeshes(this.#world);
-    this.#createTile(this.#world, 0, 0);
     this.#createTile(this.#world, -400, 0);
-    this.#createTile(this.#world, -800, 0);
+    this.#createTile(this.#world, 0, 0);
+    this.#createTile(this.#world, 400, 0);
 
     this.loadWorld(this.#world);
   }

@@ -171,9 +171,36 @@ export const PYRAMID_MESH: Mesh = {
   normals: PYRAMID_NORMALS,
 };
 
+// Unit plane on XY (z = 0), extent [-1, 1]. Two triangles, CCW from +Z. Scale in transform.
+// prettier-ignore
+const PLANE_VERTICES = [
+  -1, -1, 0,
+   1, -1, 0,
+   1,  1, 0,
+  -1, -1, 0,
+   1,  1, 0,
+  -1,  1, 0,
+];
+
+const PLANE_NORMALS = [
+  0, 0, 1,
+  0, 0, 1,
+  0, 0, 1,
+  0, 0, 1,
+  0, 0, 1,
+  0, 0, 1,
+];
+
+export const PLANE_MESH: Mesh = {
+  r_id: "plane",
+  vertices: PLANE_VERTICES,
+  normals: PLANE_NORMALS,
+};
+
 export const MESHES = {
   cube: CUBE_MESH,
   pyramid: PYRAMID_MESH,
+  plane: PLANE_MESH,
 } as const;
 
 export type MeshId = keyof typeof MESHES;
