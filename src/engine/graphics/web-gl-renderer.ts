@@ -1,90 +1,27 @@
-import type { Renderer2D as Renderer3D, Viewport } from "./types";
-import { CUBE_MESH } from "./shapes/mesh";
 import { canvasToDisplaySizeMap, measureElement } from "./canvas/canvas-utils";
-import { SIMPLE_F_SHADER, SIMPLE_V_SHADER } from "./shaders/shaders";
+import { shaders } from "./webgl/shaders/basic-shader";
 import { mat4, vec3 } from "gl-matrix";
-import type { Transform3D } from "../core/primitives";
-
-function randomColor() {
-  return [
-    Math.random(), Math.random(), Math.random(),
-  ];
-}
-
-function getColorData(vertices: number[]) {
-  const len = vertices.length / 3;
-
-  const colors = [];
-  for (let i = 0; i < len / 3; i++) {
-    const random = randomColor();
-    colors.push(...random);
-    colors.push(...random);
-    colors.push(...random);
-  }
-
-  return colors;
-}
-
-export const ATTRIBUTE = {
-  A_POSITION: "a_position",
-  A_NORMAL: "a_normal",
-};
-
-export const UNI = {
-  U_WORLD: "u_world",
-  U_WORLD_VIEW_PROJECTION: "u_worldViewProjection",
-  U_COLOR: "u_color",
-  U_REV_LIGHT_DIRECTION: "u_reverseLightDirection",
-};
+import type { Position, Transform3D } from "../core/primitives";
+import { AreoGL } from "./webgl/areo/areo-gl";
+import type { AreoProgram, LoadedMesh, Mesh } from "./webgl/areo/areo-types";
+import type { Renderer3D, Viewport } from "./types";
 
 export class WebGlRenderer implements Renderer3D {
   #viewport: Viewport = { size: { height: 0, width: 0 } };
   #gl: WebGL2RenderingContext;
   #canvas: HTMLCanvasElement;
 
-  #program: WebGLProgram;
-
-  #attributes: Record<keyof typeof ATTRIBUTE, number>;
-  #uniforms: Partial<Record<keyof typeof UNI, WebGLUniformLocation>>;
-  #buffers: Record<string, WebGLBuffer>;
-
-  #vShader: WebGLShader;
-  #fShader: WebGLShader;
-
-  #cubeColors: number[];
+  #programs: Record<string, AreoProgram> = {};
+  #aero: AreoGL;
 
   constructor(parentElement: HTMLElement) {
     const { canvas } = this.#bootstrap(parentElement);
 
     this.#gl = canvas.getContext("webgl2")!;
     this.#canvas = canvas;
+    this.#aero = new AreoGL(this.#gl);
 
-    this.#vShader = this.#createShader(this.#gl.VERTEX_SHADER, SIMPLE_V_SHADER);
-    this.#fShader = this.#createShader(this.#gl.FRAGMENT_SHADER, SIMPLE_F_SHADER);
-
-    this.#cubeColors = getColorData(CUBE_MESH.VERTICES);
-    this.#program = this.#createProgram(this.#vShader, this.#fShader);
-
-    this.#gl.enable(this.#gl.CULL_FACE);
-    this.#gl.frontFace(this.#gl.CW);
-
-    this.#attributes = {
-      A_POSITION: this.#gl.getAttribLocation(this.#program, ATTRIBUTE.A_POSITION),
-      A_NORMAL: this.#gl.getAttribLocation(this.#program, ATTRIBUTE.A_NORMAL),
-    };
-
-    this.#uniforms = {
-      U_WORLD: this.#gl.getUniformLocation(this.#program, UNI.U_WORLD)!,
-      U_WORLD_VIEW_PROJECTION: this.#gl.getUniformLocation(this.#program, UNI.U_WORLD_VIEW_PROJECTION)!,
-      U_REV_LIGHT_DIRECTION: this.#gl.getUniformLocation(this.#program, UNI.U_REV_LIGHT_DIRECTION)!,
-      U_COLOR: this.#gl.getUniformLocation(this.#program, UNI.U_COLOR)!,
-    };
-
-    this.#buffers = {
-      positions: this.#gl.createBuffer(),
-      normals: this.#gl.createBuffer(),
-    };
-    console.log(this.#buffers, this.#uniforms);
+    this.#programs.basic = this.#aero.createProgram("basic", shaders);
 
     const resizeCallback = (entries: ResizeObserverEntry[]) => {
       measureElement(entries);
@@ -106,46 +43,43 @@ export class WebGlRenderer implements Renderer3D {
     this.#gl.clear(this.#gl.COLOR_BUFFER_BIT | this.#gl.DEPTH_BUFFER_BIT);
   }
 
-  cube(x: number, y: number, trans: Transform3D): void {
-    const vao = this.#gl.createVertexArray();
-    this.#gl.bindVertexArray(vao);
-
-    this.#gl.bindBuffer(this.#gl.ARRAY_BUFFER, this.#buffers.positions);
-
-    this.#setGeometry("cube");
-
-    this.#gl.enableVertexAttribArray(this.#attributes.A_POSITION);
-    this.#gl.vertexAttribPointer(this.#attributes.A_POSITION, 3, this.#gl.FLOAT, false, 0, 0);
-
-    this.#gl.bindBuffer(this.#gl.ARRAY_BUFFER, this.#buffers.normals);
-    this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(CUBE_MESH.NORMALS), this.#gl.STATIC_DRAW);
-    this.#gl.enableVertexAttribArray(this.#attributes.A_NORMAL);
-    this.#gl.vertexAttribPointer(this.#attributes.A_NORMAL, 3, this.#gl.FLOAT, false, 0, 0);
-
-    this.#gl.useProgram(this.#program);
-
-    const [
-      world, worldViewProjection,
-    ] = this.#applyTransforms(x, 500, 0, trans);
-
-    this.#gl.uniformMatrix4fv(this.#uniforms.U_WORLD_VIEW_PROJECTION!, false, worldViewProjection);
-    this.#gl.uniformMatrix4fv(this.#uniforms.U_WORLD!, false, world);
-
-    this.#gl.uniform4fv(
-      this.#uniforms.U_COLOR!,
-      [
-        1, 1, 0.2,
-        1,
-      ],
-    );
-
-    const lightDir = vec3.fromValues(100, -100, 200);
-    this.#gl.uniform3fv(this.#uniforms.U_REV_LIGHT_DIRECTION!, vec3.normalize(lightDir, lightDir));
-
-    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 36);
+  init(meshes: Mesh[]): void {
+    this.#aero.loadGeometry(this.#programs.basic, meshes);
   }
 
-  #applyTransforms(x: number, y: number, z: number, trans: Transform3D) {
+  setStaticUniforms() {
+    const uni = this.#programs.basic.sharedUniforms;
+
+    const values = {
+      u_color: [
+        1, 0, 0.4,
+        1,
+      ],
+      u_lightDirection: vec3.normalize(vec3.create(), vec3.fromValues(100, -100, 200)),
+    };
+    this.#gl.uniform4fv(uni.u_color.location, values.u_color);
+    this.#gl.uniform3fv(uni.u_reverseLightDirection.location, values.u_lightDirection);
+  }
+
+  setup(programName: "basic") {
+    this.#gl.useProgram(this.#programs[programName].program);
+    this.setStaticUniforms();
+  }
+
+  render(mesh: LoadedMesh, position: Position, transform: Transform3D) {
+    this.#gl.bindVertexArray(mesh.r_vao);
+
+    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(position, transform);
+
+    const uni = this.#programs.basic.sharedUniforms;
+
+    this.#gl.uniformMatrix4fv(uni.u_worldViewProjection.location, false, worldViewProjection);
+    this.#gl.uniformMatrix4fv(uni.u_world.location, false, transposedInvertedWorldTransforms);
+
+    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, mesh.vertices.length / 3);
+  }
+
+  #computeViewProjection() {
     const depth = 1000;
 
     const projection = mat4.ortho(mat4.create(), 0, this.#canvas.clientWidth, this.#canvas.clientHeight, 0, -depth, depth);
@@ -157,33 +91,43 @@ export class WebGlRenderer implements Renderer3D {
     const view = mat4.invert(mat4.create(), camera)!;
     const viewProjection = mat4.multiply(mat4.create(), projection, view);
 
+    return viewProjection;
+  }
+
+  #computeWorldTransforms(position: Position, transform: Transform3D) {
     // World
     const world = mat4.create();
 
     // world transforms
-    mat4.translate(world, world, vec3.fromValues(x, 0, z));
-    mat4.rotateX(world, world, (trans.rotateX * Math.PI) / 180);
-    mat4.rotateY(world, world, (trans.rotateY * Math.PI) / 180);
-    mat4.rotateZ(world, world, (trans.rotateZ * Math.PI) / 180);
+    mat4.translate(world, world, vec3.fromValues(position.x, position.y, position.z));
+    mat4.rotateX(world, world, (transform.rotateX * Math.PI) / 180);
+    mat4.rotateY(world, world, (transform.rotateY * Math.PI) / 180);
+    mat4.rotateZ(world, world, (transform.rotateZ * Math.PI) / 180);
     mat4.scale(world, world, [
-      trans.scaleX, trans.scaleY, trans.scaleZ,
+      transform.scaleX, transform.scaleY, transform.scaleZ,
     ]);
 
-    const worldViewProjection = mat4.multiply(mat4.create(), viewProjection, world);
-
-    const worldInverse = mat4.invert(mat4.create(), world)!;
-    const worldInverseTranspose = mat4.transpose(mat4.create(), worldInverse);
-
-    return [
-      worldInverseTranspose, worldViewProjection,
-    ];
+    return world;
   }
 
-  #setGeometry(mesh: "cube" | "rectangle") {
-    switch (mesh) {
-      case "cube":
-        this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(CUBE_MESH.VERTICES), this.#gl.STATIC_DRAW);
+  #computeDynamicUniforms(position: Position, transform: Transform3D) {
+    const viewProjection = this.#computeViewProjection();
+    const worldTransforms = this.#computeWorldTransforms(position, transform);
+
+    const worldViewProjection = mat4.multiply(mat4.create(), viewProjection, worldTransforms);
+
+    const invertedWorldTransforms = mat4.invert(mat4.create(), worldTransforms);
+
+    if (!invertedWorldTransforms) {
+      throw new Error("Shouldn't happen");
     }
+
+    const transposedInvertedWorldTransforms = mat4.transpose(mat4.create(), invertedWorldTransforms);
+
+    return {
+      worldViewProjection,
+      transposedInvertedWorldTransforms,
+    };
   }
 
   #bootstrap(element: HTMLElement) {
@@ -194,37 +138,6 @@ export class WebGlRenderer implements Renderer3D {
     element.appendChild(canvas);
 
     return { canvas };
-  }
-
-  #createShader(type: number, source: string) {
-    const shader = this.#gl.createShader(type)!;
-    this.#gl.shaderSource(shader, source);
-    this.#gl.compileShader(shader);
-
-    const success = this.#gl.getShaderParameter(shader, this.#gl.COMPILE_STATUS);
-
-    if (!success) {
-      this.#gl.deleteShader(shader);
-      console.log(this.#gl.getShaderInfoLog(shader));
-    }
-
-    return shader;
-  }
-
-  #createProgram(vertexShader: WebGLShader, fragmentShader: WebGLShader) {
-    const program = this.#gl.createProgram();
-    this.#gl.attachShader(program, vertexShader);
-    this.#gl.attachShader(program, fragmentShader);
-    this.#gl.linkProgram(program);
-
-    const success = this.#gl.getProgramParameter(program, this.#gl.LINK_STATUS);
-
-    if (!success) {
-      this.#gl.deleteProgram(program);
-      console.log(this.#gl.getProgramInfoLog(program));
-    }
-
-    return program;
   }
 
   #watchResize(observer: ResizeObserver) {

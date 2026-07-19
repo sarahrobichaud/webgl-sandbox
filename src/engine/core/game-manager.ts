@@ -1,8 +1,6 @@
-import { CanvasRenderer2D } from "../graphics/2d-canvas-renderer";
-import type { Renderer, RendererKind } from "../graphics/types";
 import { isRenderingComponent, type LogicComponent, type RenderingComponent, isLogicComponent, type Component, InternalComponent, type RenderingPipelineComponent } from "../components/components";
+import type { Renderer, RendererKind } from "../graphics/types";
 import { WebGlRenderer } from "../graphics/web-gl-renderer";
-import { Transformer } from "../graphics/render/render-transforms";
 import type { GameWorld } from "./world";
 
 /**
@@ -27,20 +25,11 @@ export abstract class Game implements GameManager {
   #renderingComponents: RenderingComponent[] = [];
   #logicComponents: LogicComponent[] = [];
 
-  #renderingPipeline = [
-    Transformer,
-  ];
-  #internalRenderingComponents: RenderingPipelineComponent[] = [];
-
   #world: GameWorld<string> | null = null;
 
   constructor(config: GameManagerConfig) {
     this.#parentElement = config.parentElement;
     this.#renderer = this.#setupRenderer(config.renderer);
-
-    for (const Component of this.#renderingPipeline) {
-      this.#internalRenderingComponents.push(new Component());
-    }
   }
 
   start(): void {
@@ -59,6 +48,8 @@ export abstract class Game implements GameManager {
 
   protected loadWorld(gameWorld: GameWorld<string>) {
     this.#world = gameWorld;
+
+    this.#initRenderer();
   }
 
   /**
@@ -72,16 +63,21 @@ export abstract class Game implements GameManager {
    * @returns
    */
   #setupRenderer(renderer: RendererKind) {
-    console.log(this);
-    if (renderer === "canvas-2d") {
-      return new CanvasRenderer2D(this.#parentElement);
-    }
-
     if (renderer === "web-gl") {
       return new WebGlRenderer(this.#parentElement);
     }
 
     throw new Error("Only canvas-2d is supported");
+  }
+
+  #initRenderer() {
+    if (!this.#world) {
+      return;
+    }
+
+    this.#renderer.init([
+      ...this.#world.meshes.values(),
+    ]);
   }
 
   /**
@@ -120,12 +116,24 @@ export abstract class Game implements GameManager {
       return;
     }
 
-    for (const internalSystem of this.#internalRenderingComponents) {
-      internalSystem.update(this.#world.entities.values(), this.#world.primitives, this.#world.renderMatrices);
-    }
+    renderer.setup("basic");
 
-    for (const renderSystem of this.#renderingComponents) {
-      renderSystem.draw(renderer);
+    for (const entity of this.#world.entities) {
+      const def = this.#world.definitions.get(entity);
+
+      if (def?.isHidden) {
+        continue;
+      }
+
+      const pos = this.#world.positions.get(entity);
+      const transform = this.#world.transform3D.get(entity);
+      const mesh = this.#world.meshes.get(entity);
+
+      if (!pos || !transform || !mesh) {
+        continue;
+      }
+
+      renderer.render(mesh, pos, transform);
     }
   }
 }

@@ -1,4 +1,6 @@
-export const SIMPLE_V_SHADER = `#version 300 es
+import type { ShaderPair } from "../areo/areo-types";
+
+const vertex = `#version 300 es
 
 in vec4 a_position;
 in vec3 a_normal;
@@ -12,10 +14,9 @@ void main() {
   gl_Position = u_worldViewProjection * a_position;
   v_normal = mat3(u_world) * a_normal;
 }
-
 `;
 
-export const SIMPLE_F_SHADER = `#version 300 es
+const fragment = `#version 300 es
 
 precision highp float;
 
@@ -37,3 +38,8 @@ void main() {
   outColor.rgb *= light;
 }
 `;
+
+export const shaders: ShaderPair = {
+  vertex,
+  fragment,
+};

@@ -1,3 +1,5 @@
+import type { Mesh } from "../webgl/areo/areo-types";
+
 // prettier-ignore
 export const RECT_VERTICES = [
   0, 0, 
@@ -103,7 +105,8 @@ const CUBE_VERTICES = [
   -1,  1, -1,
 ];
 
-export const CUBE_MESH = {
-  VERTICES: CUBE_VERTICES,
-  NORMALS: CUBE_NORMALS,
+export const CUBE_MESH: Mesh = {
+  r_id: "cube",
+  vertices: CUBE_VERTICES,
+  normals: CUBE_NORMALS,
 };

@@ -1,5 +1,5 @@
-import { renderMatrix, type RenderMatrix } from "../graphics/render-matrix";
-import type { Drawable, Movable, Position, Transform2D, Transform3D } from "./primitives";
+import type { Mesh } from "../graphics/webgl/areo/areo-types";
+import type { Definition, Drawable, Movable, Position, Transform2D, Transform3D } from "./primitives";
 import type { EntityId } from "./types";
 
 /**
@@ -13,8 +13,10 @@ export class GameWorld<StorageKey extends string> {
   #entities = new Set<EntityId>();
 
   #storage = {
+    definitions: new Map<EntityId, Definition>(),
     positions: new Map<EntityId, Position>(),
 
+    mesh: new Map<EntityId, Mesh>(),
     transforms2D: new Map<EntityId, Transform2D>(),
     transforms3D: new Map<EntityId, Transform3D>(),
 
@@ -24,10 +26,22 @@ export class GameWorld<StorageKey extends string> {
 
   constructor() {}
 
-  createEntity() {
+  createEntity(tags: string[] = []) {
     const id = this.#nextId++;
     this.#entities.add(id);
+    this.#storage.definitions.set(id, {
+      isHidden: false,
+      tags: tags,
+    });
     return id;
+  }
+
+  get meshes() {
+    return this.#storage.mesh;
+  }
+
+  get definitions() {
+    return this.#storage.definitions;
   }
 
   get positions() {

@@ -1,5 +1,10 @@
 import type { vec3 } from "gl-matrix";
 
+export interface Definition {
+  isHidden: boolean;
+  tags: string[];
+}
+
 export interface Position {
   x: number;
   y: number;

@@ -19,7 +19,7 @@ export class MovementSystem extends GameComponent<WorldStorage> {
       const trans3d = this.world.transform3D.get(entity);
       if (pos) {
         pos.x += movables.velocities[0];
-        pos.y += movables.velocities[1];
+        // pos.y += movables.velocities[1];
       }
 
       if (this.#scale)

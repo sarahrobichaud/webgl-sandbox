@@ -1,18 +1,17 @@
-import type { Transform3D } from "../core/primitives";
+import type { Position, Transform3D } from "../core/primitives";
+import type { Mesh } from "./webgl/areo/areo-types";
 
-export type RendererKind = "canvas-2d" | "web-gl";
+export type RendererKind = "web-gl";
 
 export interface Viewport {
   size: { height: number; width: number };
 }
 
-export interface Renderer2D {
-  viewport: Viewport;
+export interface Renderer3D {
   clear(): void;
+  render(mesh: Mesh, position: Position, transform: Transform3D): void;
+  init(meshes: Mesh[]): void;
+  setup(program: "basic"): void;
 }
 
-export interface Renderer3D extends Renderer2D {
-  cube(x: number, y: number, trans: Transform3D): void;
-}
-
-export type Renderer = Renderer2D | Renderer3D;
+export type Renderer = Renderer3D;

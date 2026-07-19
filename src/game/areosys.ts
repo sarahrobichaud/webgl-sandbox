@@ -4,6 +4,7 @@ import type { EntityId } from "../engine/core/types";
 import { MovementSystem } from "./systems/movement-system";
 import { RenderingSystem } from "./systems/rendering-system";
 import { World } from "./world";
+import { CUBE_MESH } from "../engine/graphics/shapes/mesh";
 
 export interface AeroSysConfig {
   gameConfig: GameManagerConfig;
@@ -38,9 +39,12 @@ export class AeroSys extends Game {
   }
 
   #createTile(world: World, x: number, y: number): EntityId {
-    const id = world.createEntity();
+    const id = world.createEntity([
+      "simple",
+    ]);
     world.positions.set(id, { x, y, z: 0 });
     world.movables.set(id, { velocities: vec3.fromValues(2, 1, 0) });
+    world.meshes.set(id, CUBE_MESH);
     world.transform3D.set(id, {
       rotateX: 0,
       rotateY: 0,
