@@ -1,7 +1,9 @@
 import type { Renderer2D as Renderer3D, Viewport } from "./types";
-import { CUBE_VERTICES, RECT_VERTICES } from "./shapes/vertices";
-import { FRAGMENT_SHADER_SOURCE, VERTEX_SHADER_SOURCE } from "./shaders/shaders";
+import { CUBE_MESH } from "./shapes/mesh";
 import { canvasToDisplaySizeMap, measureElement } from "./canvas/canvas-utils";
+import { SIMPLE_F_SHADER, SIMPLE_V_SHADER } from "./shaders/shaders";
+import { mat4, vec3 } from "gl-matrix";
+import type { Transform3D } from "../core/primitives";
 
 function randomColor() {
   return [
@@ -13,8 +15,11 @@ function getColorData(vertices: number[]) {
   const len = vertices.length / 3;
 
   const colors = [];
-  for (let i = 0; i < len; i++) {
-    colors.push(...randomColor());
+  for (let i = 0; i < len / 3; i++) {
+    const random = randomColor();
+    colors.push(...random);
+    colors.push(...random);
+    colors.push(...random);
   }
 
   return colors;
@@ -22,12 +27,14 @@ function getColorData(vertices: number[]) {
 
 export const ATTRIBUTE = {
   A_POSITION: "a_position",
+  A_NORMAL: "a_normal",
 };
 
 export const UNI = {
-  U_TRANSLATION: "u_translation",
-  U_RESOLUTION: "u_resolution",
-  U_ROTATION: "u_rotation",
+  U_WORLD: "u_world",
+  U_WORLD_VIEW_PROJECTION: "u_worldViewProjection",
+  U_COLOR: "u_color",
+  U_REV_LIGHT_DIRECTION: "u_reverseLightDirection",
 };
 
 export class WebGlRenderer implements Renderer3D {
@@ -38,11 +45,13 @@ export class WebGlRenderer implements Renderer3D {
   #program: WebGLProgram;
 
   #attributes: Record<keyof typeof ATTRIBUTE, number>;
-  #uniforms: Record<keyof typeof UNI, WebGLUniformLocation>;
+  #uniforms: Partial<Record<keyof typeof UNI, WebGLUniformLocation>>;
   #buffers: Record<string, WebGLBuffer>;
 
   #vShader: WebGLShader;
   #fShader: WebGLShader;
+
+  #cubeColors: number[];
 
   constructor(parentElement: HTMLElement) {
     const { canvas } = this.#bootstrap(parentElement);
@@ -50,24 +59,32 @@ export class WebGlRenderer implements Renderer3D {
     this.#gl = canvas.getContext("webgl2")!;
     this.#canvas = canvas;
 
-    this.#vShader = this.#createShader(this.#gl.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
-    this.#fShader = this.#createShader(this.#gl.FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
+    this.#vShader = this.#createShader(this.#gl.VERTEX_SHADER, SIMPLE_V_SHADER);
+    this.#fShader = this.#createShader(this.#gl.FRAGMENT_SHADER, SIMPLE_F_SHADER);
 
+    this.#cubeColors = getColorData(CUBE_MESH.VERTICES);
     this.#program = this.#createProgram(this.#vShader, this.#fShader);
+
+    this.#gl.enable(this.#gl.CULL_FACE);
+    this.#gl.frontFace(this.#gl.CW);
 
     this.#attributes = {
       A_POSITION: this.#gl.getAttribLocation(this.#program, ATTRIBUTE.A_POSITION),
+      A_NORMAL: this.#gl.getAttribLocation(this.#program, ATTRIBUTE.A_NORMAL),
     };
 
     this.#uniforms = {
-      U_TRANSLATION: this.#gl.getUniformLocation(this.#program, UNI.U_TRANSLATION)!,
-      U_RESOLUTION: this.#gl.getUniformLocation(this.#program, UNI.U_RESOLUTION)!,
-      U_ROTATION: this.#gl.getUniformLocation(this.#program, UNI.U_ROTATION)!,
+      U_WORLD: this.#gl.getUniformLocation(this.#program, UNI.U_WORLD)!,
+      U_WORLD_VIEW_PROJECTION: this.#gl.getUniformLocation(this.#program, UNI.U_WORLD_VIEW_PROJECTION)!,
+      U_REV_LIGHT_DIRECTION: this.#gl.getUniformLocation(this.#program, UNI.U_REV_LIGHT_DIRECTION)!,
+      U_COLOR: this.#gl.getUniformLocation(this.#program, UNI.U_COLOR)!,
     };
 
     this.#buffers = {
       positions: this.#gl.createBuffer(),
+      normals: this.#gl.createBuffer(),
     };
+    console.log(this.#buffers, this.#uniforms);
 
     const resizeCallback = (entries: ResizeObserverEntry[]) => {
       measureElement(entries);
@@ -84,46 +101,90 @@ export class WebGlRenderer implements Renderer3D {
   }
 
   clear() {
+    this.#gl.enable(this.#gl.DEPTH_TEST);
     this.#gl.clearColor(0, 0, 0, 0);
-    this.#gl.clear(this.#gl.COLOR_BUFFER_BIT);
+    this.#gl.clear(this.#gl.COLOR_BUFFER_BIT | this.#gl.DEPTH_BUFFER_BIT);
   }
 
-  rectangle3D(x: number, y: number, rotation: number) {
-    this.#gl.bindBuffer(this.#gl.ARRAY_BUFFER, this.#buffers.positions);
-    this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(RECT_VERTICES), this.#gl.STATIC_DRAW);
-
+  cube(x: number, y: number, trans: Transform3D): void {
     const vao = this.#gl.createVertexArray();
     this.#gl.bindVertexArray(vao);
 
+    this.#gl.bindBuffer(this.#gl.ARRAY_BUFFER, this.#buffers.positions);
+
+    this.#setGeometry("cube");
+
     this.#gl.enableVertexAttribArray(this.#attributes.A_POSITION);
+    this.#gl.vertexAttribPointer(this.#attributes.A_POSITION, 3, this.#gl.FLOAT, false, 0, 0);
 
-    const size = 2;
-    const type = this.#gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-
-    this.#gl.vertexAttribPointer(this.#attributes.A_POSITION, size, type, normalize, stride, offset);
+    this.#gl.bindBuffer(this.#gl.ARRAY_BUFFER, this.#buffers.normals);
+    this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(CUBE_MESH.NORMALS), this.#gl.STATIC_DRAW);
+    this.#gl.enableVertexAttribArray(this.#attributes.A_NORMAL);
+    this.#gl.vertexAttribPointer(this.#attributes.A_NORMAL, 3, this.#gl.FLOAT, false, 0, 0);
 
     this.#gl.useProgram(this.#program);
 
-    this.#gl.uniform2f(this.#uniforms.U_RESOLUTION, this.#gl.canvas.width, this.#gl.canvas.height);
-    this.#gl.uniform2fv(
-      this.#uniforms.U_TRANSLATION,
+    const [
+      world, worldViewProjection,
+    ] = this.#applyTransforms(x, 500, 0, trans);
+
+    this.#gl.uniformMatrix4fv(this.#uniforms.U_WORLD_VIEW_PROJECTION!, false, worldViewProjection);
+    this.#gl.uniformMatrix4fv(this.#uniforms.U_WORLD!, false, world);
+
+    this.#gl.uniform4fv(
+      this.#uniforms.U_COLOR!,
       [
-        500, 400,
+        1, 1, 0.2,
+        1,
       ],
     );
 
-    const angle = (rotation * Math.PI) / 180;
-    this.#gl.uniform2fv(this.#uniforms.U_ROTATION, [
-      Math.sin(angle), Math.cos(angle),
-    ]);
+    const lightDir = vec3.fromValues(100, -100, 200);
+    this.#gl.uniform3fv(this.#uniforms.U_REV_LIGHT_DIRECTION!, vec3.normalize(lightDir, lightDir));
 
-    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 6);
+    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 36);
   }
 
-  rectangle() {}
+  #applyTransforms(x: number, y: number, z: number, trans: Transform3D) {
+    const depth = 1000;
+
+    const projection = mat4.ortho(mat4.create(), 0, this.#canvas.clientWidth, this.#canvas.clientHeight, 0, -depth, depth);
+
+    const camera = mat4.create();
+    mat4.rotateX(camera, camera, (20 * Math.PI) / 180);
+    mat4.translate(camera, camera, vec3.fromValues(0, -600, 0));
+
+    const view = mat4.invert(mat4.create(), camera)!;
+    const viewProjection = mat4.multiply(mat4.create(), projection, view);
+
+    // World
+    const world = mat4.create();
+
+    // world transforms
+    mat4.translate(world, world, vec3.fromValues(x, 0, z));
+    mat4.rotateX(world, world, (trans.rotateX * Math.PI) / 180);
+    mat4.rotateY(world, world, (trans.rotateY * Math.PI) / 180);
+    mat4.rotateZ(world, world, (trans.rotateZ * Math.PI) / 180);
+    mat4.scale(world, world, [
+      trans.scaleX, trans.scaleY, trans.scaleZ,
+    ]);
+
+    const worldViewProjection = mat4.multiply(mat4.create(), viewProjection, world);
+
+    const worldInverse = mat4.invert(mat4.create(), world)!;
+    const worldInverseTranspose = mat4.transpose(mat4.create(), worldInverse);
+
+    return [
+      worldInverseTranspose, worldViewProjection,
+    ];
+  }
+
+  #setGeometry(mesh: "cube" | "rectangle") {
+    switch (mesh) {
+      case "cube":
+        this.#gl.bufferData(this.#gl.ARRAY_BUFFER, new Float32Array(CUBE_MESH.VERTICES), this.#gl.STATIC_DRAW);
+    }
+  }
 
   #bootstrap(element: HTMLElement) {
     const canvas = document.createElement("canvas");

@@ -24,19 +24,33 @@ export class AeroSys extends Game {
     }
 
     this.#createTile(this.#world, 0, 0);
+
     this.loadWorld(this.#world);
+
+    this.#createCamera(this.#world);
+  }
+
+  #createCamera(world: World) {
+    const id = world.createEntity();
+    world.positions.set(id, { x: 0, y: 0, z: 0 });
+    world.movables.set(id, { velocities: vec3.fromValues(2, 0, 0) });
+    return id;
   }
 
   #createTile(world: World, x: number, y: number): EntityId {
     const id = world.createEntity();
     world.positions.set(id, { x, y, z: 0 });
     world.movables.set(id, { velocities: vec3.fromValues(2, 1, 0) });
-    world.transforms2D.set(id, {
+    world.transform3D.set(id, {
       rotateX: 0,
       rotateY: 0,
+      rotateZ: 0,
       x: 0,
       y: 0,
-      isDirty: false,
+      z: 0,
+      scaleX: 0,
+      scaleY: 0,
+      scaleZ: 0,
     });
     world.drawables.set(id, { w: 32, h: 32, color: "blue" });
     return id;

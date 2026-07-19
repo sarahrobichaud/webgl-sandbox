@@ -22,19 +22,12 @@ export class GameWorld<StorageKey extends string> {
     drawables: new Map<EntityId, Drawable>(),
   };
 
-  #renderMatrices = new Map<EntityId, RenderMatrix>();
-
   constructor() {}
 
   createEntity() {
     const id = this.#nextId++;
-    this.#renderMatrices.set(id, renderMatrix());
     this.#entities.add(id);
     return id;
-  }
-
-  get renderMatrices() {
-    return this.#renderMatrices;
   }
 
   get positions() {

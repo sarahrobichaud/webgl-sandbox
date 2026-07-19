@@ -1,3 +1,5 @@
+import type { Transform3D } from "../core/primitives";
+
 export type RendererKind = "canvas-2d" | "web-gl";
 
 export interface Viewport {
@@ -6,12 +8,11 @@ export interface Viewport {
 
 export interface Renderer2D {
   viewport: Viewport;
-  rectangle(x: number, y: number, width: number, height: number, color: string): void;
   clear(): void;
 }
 
 export interface Renderer3D extends Renderer2D {
-  rectangle3D(x: number, y: number, rotation: number): void;
+  cube(x: number, y: number, trans: Transform3D): void;
 }
 
 export type Renderer = Renderer2D | Renderer3D;

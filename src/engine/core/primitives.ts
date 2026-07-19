@@ -14,31 +14,34 @@ export function position(x: number = 0, y: number = 0, z: number = 0) {
   };
 }
 
-interface Tranform {
-  isDirty: boolean;
-}
+interface Tranform {}
 
 export interface Transform2D extends Tranform {
   x: number;
   y: number;
   rotateX: number;
   rotateY: number;
+  scaleX: number;
+  scaleY: number;
 }
 
-export function transform2D(x: number = 0, y: number = 0, rotateX: number = 0, rotateY: number = 0) {
+export function transform2D(x: number = 0, y: number = 0, rotateX: number = 0, rotateY: number = 0, scaleX = 0, scaleY = 0) {
   return {
     x,
     y,
     rotateX,
     rotateY,
+    scaleX,
+    scaleY,
   };
 }
 
 export interface Transform3D extends Transform2D {
   z: number;
   rotateZ: number;
+  scaleZ: number;
 }
-export function transform3D(x: number = 0, y: number = 0, z: number = 0, rotateX: number = 0, rotateY: number = 0, rotateZ: number = 0) {
+export function transform3D(x: number = 0, y: number = 0, z: number = 0, rotateX: number = 0, rotateY: number = 0, rotateZ: number = 0, scaleX = 0, scaleY = 0, scaleZ = 0) {
   return {
     x,
     y,
@@ -46,6 +49,9 @@ export function transform3D(x: number = 0, y: number = 0, z: number = 0, rotateX
     rotateX,
     rotateY,
     rotateZ,
+    scaleX,
+    scaleY,
+    scaleZ,
   };
 }
 
