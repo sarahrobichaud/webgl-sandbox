@@ -1,4 +1,4 @@
-import type { Mesh } from "../webgl/areo/areo-types";
+import type { Mesh } from "../webgl/webgl-lib/areo-types";
 
 // prettier-ignore
 export const RECT_VERTICES = [
@@ -110,3 +110,70 @@ export const CUBE_MESH: Mesh = {
   vertices: CUBE_VERTICES,
   normals: CUBE_NORMALS,
 };
+
+// Square pyramid: apex (0,1,0), base y=-1. Flat normals per face.
+// prettier-ignore
+const PYRAMID_VERTICES = [
+  // Front
+   0,  1,  0,
+  -1, -1,  1,
+   1, -1,  1,
+  // Right
+   0,  1,  0,
+   1, -1,  1,
+   1, -1, -1,
+  // Back
+   0,  1,  0,
+   1, -1, -1,
+  -1, -1, -1,
+  // Left
+   0,  1,  0,
+  -1, -1, -1,
+  -1, -1,  1,
+  // Base
+  -1, -1, -1,
+   1, -1, -1,
+   1, -1,  1,
+  -1, -1, -1,
+   1, -1,  1,
+  -1, -1,  1,
+];
+
+const PYRAMID_NORMALS = [
+  // Front
+  0, 0.447, 0.894,
+  0, 0.447, 0.894,
+  0, 0.447, 0.894,
+  // Right
+  0.894, 0.447, 0,
+  0.894, 0.447, 0,
+  0.894, 0.447, 0,
+  // Back
+  0, 0.447, -0.894,
+  0, 0.447, -0.894,
+  0, 0.447, -0.894,
+  // Left
+  -0.894, 0.447, 0,
+  -0.894, 0.447, 0,
+  -0.894, 0.447, 0,
+  // Base
+  0, -1, 0,
+  0, -1, 0,
+  0, -1, 0,
+  0, -1, 0,
+  0, -1, 0,
+  0, -1, 0,
+];
+
+export const PYRAMID_MESH: Mesh = {
+  r_id: "pyramid",
+  vertices: PYRAMID_VERTICES,
+  normals: PYRAMID_NORMALS,
+};
+
+export const MESHES = {
+  cube: CUBE_MESH,
+  pyramid: PYRAMID_MESH,
+} as const;
+
+export type MeshId = keyof typeof MESHES;

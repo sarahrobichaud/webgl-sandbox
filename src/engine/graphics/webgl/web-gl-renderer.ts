@@ -1,10 +1,10 @@
-import { canvasToDisplaySizeMap, measureElement } from "./canvas/canvas-utils";
-import { shaders } from "./webgl/shaders/basic-shader";
+import { canvasToDisplaySizeMap, measureElement } from "../canvas/canvas-utils";
+import { shaders } from "./shaders/basic-shader";
 import { mat4, vec3 } from "gl-matrix";
-import type { Position, Transform3D } from "../core/primitives";
-import { AreoGL } from "./webgl/areo/areo-gl";
-import type { AreoProgram, LoadedMesh, Mesh } from "./webgl/areo/areo-types";
-import type { Renderer3D, Viewport } from "./types";
+import type { Position, Transform3D } from "../../core/primitives";
+import { AreoGL } from "./webgl-lib/areo-gl";
+import type { AreoProgram, LoadedMesh, Mesh } from "./webgl-lib/areo-types";
+import type { Renderer3D, Viewport } from "../types";
 
 export class WebGlRenderer implements Renderer3D {
   #viewport: Viewport = { size: { height: 0, width: 0 } };

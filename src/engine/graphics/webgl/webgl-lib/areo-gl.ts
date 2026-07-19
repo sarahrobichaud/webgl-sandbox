@@ -11,6 +11,9 @@ export class AreoGL {
   constructor(gl: WebGL2RenderingContext) {
     this.#c = gl;
   }
+  /**
+   * Public
+   */
 
   /**
    * Creates a WebGL program
@@ -37,16 +40,22 @@ export class AreoGL {
     return this.#createProgramInfo(name, program);
   }
 
+  /**
+   * Uploads geometry data to a buffer and assigns a VAO to a mesh
+   * @param program - The program
+   * @param meshes - All meshes
+   */
   loadGeometry(program: AreoProgram, meshes: Mesh[]) {
     for (const mesh of meshes) {
       const vao = this.#c.createVertexArray();
-
       this.#c.bindVertexArray(vao);
 
-      this.#setupAttributes(program);
-      this.#loadAttributeData(program, mesh);
+      this.#uploadAttribute(program.attributes.a_position.location, mesh.vertices);
+      this.#uploadAttribute(program.attributes.a_normal.location, mesh.normals);
 
-      mesh.r_programId = "basic";
+      this.#c.bindVertexArray(null);
+
+      mesh.r_programId = program.name;
       mesh.r_vao = vao;
     }
   }
@@ -55,18 +64,32 @@ export class AreoGL {
    * PRIVATE
    */
   #createProgramInfo(name: string, program: WebGLProgram): AreoProgram {
-    const areoProgram = {
+    return {
       name,
       program,
       attributes: this.#getActiveAttributesInfo(program),
       sharedUniforms: this.#getActiveUniforms(program),
     };
-
-    this.#setupAttributes(areoProgram);
-
-    return areoProgram;
   }
 
+  /**
+   * Stores attribute data in a buffer, enables and configure the VAA and VAP
+   * @param location - Attribute Location
+   * @param data - The data
+   */
+  #uploadAttribute(location: number, data: number[]) {
+    const buffer = this.#c.createBuffer();
+    this.#c.bindBuffer(this.#c.ARRAY_BUFFER, buffer);
+    this.#c.bufferData(this.#c.ARRAY_BUFFER, new Float32Array(data), this.#c.STATIC_DRAW);
+    this.#c.enableVertexAttribArray(location);
+    this.#c.vertexAttribPointer(location, 3, FLOAT, false, 0, 0);
+  }
+
+  /**
+   *
+   * @param program
+   * @returns
+   */
   #getActiveUniforms(program: WebGLProgram) {
     const uniforms = {} as Record<string, WebGLActiveInfo & { location: WebGLUniformLocation }>;
 
@@ -97,27 +120,13 @@ export class AreoGL {
     return uniforms;
   }
 
-  #setupAttributes(program: AreoProgram) {
-    for (const attribute of Object.values(program.attributes)) {
-      this.#c.bindBuffer(this.#c.ARRAY_BUFFER, attribute.buffer);
-      this.#c.enableVertexAttribArray(attribute.location);
-      this.#c.vertexAttribPointer(attribute.location, 3, FLOAT, false, 0, 0);
-    }
-  }
-
-  #loadAttributeData(program: AreoProgram, mesh: Mesh) {
-    const positions = program.attributes.a_position;
-    const normals = program.attributes.a_normal;
-
-    this.#c.bindBuffer(this.#c.ARRAY_BUFFER, positions.buffer);
-    this.#c.bufferData(this.#c.ARRAY_BUFFER, new Float32Array(mesh.vertices), this.#c.STATIC_DRAW);
-
-    this.#c.bindBuffer(this.#c.ARRAY_BUFFER, normals.buffer);
-    this.#c.bufferData(this.#c.ARRAY_BUFFER, new Float32Array(mesh.normals), this.#c.STATIC_DRAW);
-  }
-
+  /**
+   * Gets all active attributes of a program and their information
+   * @param program - The program
+   * @returns - Attribute object map
+   */
   #getActiveAttributesInfo(program: WebGLProgram) {
-    const attributes = {} as Record<string, WebGLActiveInfo & { location: number; buffer: WebGLBuffer }>;
+    const attributes = {} as Record<string, WebGLActiveInfo & { location: number }>;
 
     for (let i = 0; i < this.#getActiveAttributesCount(program); i++) {
       const info = this.#c.getActiveAttrib(program, i);
@@ -137,7 +146,6 @@ export class AreoGL {
         size: info.size,
         type: info.type,
         location: location,
-        buffer: this.#c.createBuffer(),
       };
     }
     return attributes;
@@ -151,6 +159,12 @@ export class AreoGL {
   #getActiveAttributesCount(program: WebGLProgram) {
     return this.#c.getProgramParameter(program, ACTIVE_ATTRIBUTES);
   }
+
+  /**
+   * Returns the number of active uniforms in a a program
+   * @param program  - The program
+   * @returns - Number of active uniforms
+   */
   #getActiveUniformsCount(program: WebGLProgram) {
     return this.#c.getProgramParameter(program, ACTIVE_UNIFORMS);
   }

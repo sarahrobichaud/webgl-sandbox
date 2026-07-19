@@ -1,4 +1,4 @@
-import type { ShaderPair } from "../areo/areo-types";
+import type { ShaderPair } from "../webgl-lib/areo-types";
 
 const vertex = `#version 300 es
 

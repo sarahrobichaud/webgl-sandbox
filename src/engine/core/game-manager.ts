@@ -1,6 +1,6 @@
 import { isRenderingComponent, type LogicComponent, type RenderingComponent, isLogicComponent, type Component, InternalComponent, type RenderingPipelineComponent } from "../components/components";
 import type { Renderer, RendererKind } from "../graphics/types";
-import { WebGlRenderer } from "../graphics/web-gl-renderer";
+import { WebGlRenderer } from "../graphics/webgl/web-gl-renderer";
 import type { GameWorld } from "./world";
 
 /**
@@ -75,6 +75,7 @@ export abstract class Game implements GameManager {
       return;
     }
 
+    // Upload every mesh in the catalog once (entities only store mesh ids).
     this.#renderer.init([
       ...this.#world.meshes.values(),
     ]);
@@ -127,7 +128,8 @@ export abstract class Game implements GameManager {
 
       const pos = this.#world.positions.get(entity);
       const transform = this.#world.transform3D.get(entity);
-      const mesh = this.#world.meshes.get(entity);
+      const meshId = this.#world.meshIds.get(entity);
+      const mesh = meshId ? this.#world.meshes.get(meshId) : undefined;
 
       if (!pos || !transform || !mesh) {
         continue;

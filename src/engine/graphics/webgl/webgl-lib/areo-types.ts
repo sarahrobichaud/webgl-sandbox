@@ -3,7 +3,6 @@ export interface AreoAttributeInfo {
   size: number;
   type: number;
   location: number;
-  buffer: WebGLBuffer;
 }
 
 export interface AreoUniformInfo {

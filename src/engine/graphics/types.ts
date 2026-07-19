@@ -1,5 +1,5 @@
 import type { Position, Transform3D } from "../core/primitives";
-import type { Mesh } from "./webgl/areo/areo-types";
+import type { Mesh } from "./webgl/webgl-lib/areo-types";
 
 export type RendererKind = "web-gl";
 
