@@ -49,28 +49,34 @@ export class WebGlRenderer implements Renderer3D {
   }
 
   init(meshes: Mesh[]): void {
-    this.#aero.loadGeometry(this.#programs.basic, [
+    // Each program needs its own VAO — attribute locations can differ.
+    this.#aero.loadGeometry(this.#programs.basic, meshes);
+    this.#aero.loadGeometry(this.#programs.grid, [
       this.#gridMesh,
     ]);
-    this.#aero.loadGeometry(this.#programs.grid, meshes);
   }
 
   setStaticUniforms() {
     const uni = this.#programs.basic.sharedUniforms;
 
-    const values = {
-      u_color: [
-        1, 0, 0.4,
-        1,
-      ],
-      u_lightDirection: vec3.normalize(vec3.create(), vec3.fromValues(1000, -800, -800)),
-    };
-    this.#gl.uniform4fv(uni.u_color.location, values.u_color);
-    this.#gl.uniform3fv(uni.u_reverseLightDirection.location, values.u_lightDirection);
+    // Optional while debugging (e.g. normal-as-color shader may not declare these).
+    if (uni.u_color) {
+      this.#gl.uniform4fv(
+        uni.u_color.location,
+        [
+          1, 1, 1,
+          1,
+        ],
+      );
+    }
+    if (uni.u_reverseLightDirection) {
+      this.#gl.uniform3fv(uni.u_reverseLightDirection.location, vec3.normalize(vec3.create(), vec3.fromValues(8, 8, 4)));
+    }
   }
 
-  #position = position(0, 200, 0);
-  #transform = transform3D(0, 0, 0, 90, 0, 0, 5000, 1000, 1);
+  // Floor: unit XZ plane; scaleX/scaleZ = tiles across (see grid-system.md)
+  #position = position(0, 0, 0);
+  #transform = transform3D(0, 0, 0, 0, 0, 0, 200, 1, 100);
 
   renderGrid() {
     this.#gl.useProgram(this.#programs.grid.program);
@@ -81,11 +87,14 @@ export class WebGlRenderer implements Renderer3D {
 
     this.#gl.bindVertexArray(this.#gridMesh.r_vao);
 
-    const { worldViewProjection } = this.#computeDynamicUniforms(this.#position, this.#transform);
+    // Grid needs the real world matrix for v_worldPos — not the normal matrix
+    // (transpose(inverse(world))) that basic uses for lighting.
+    const { worldViewProjection, world } = this.#computeDynamicUniforms(this.#position, this.#transform);
 
     const uni = this.#programs.grid.sharedUniforms;
 
     this.#gl.uniformMatrix4fv(uni.u_worldViewProjection.location, false, worldViewProjection);
+    this.#gl.uniformMatrix4fv(uni.u_world.location, false, world);
 
     this.#gl.drawArrays(this.#gl.TRIANGLES, 0, this.#gridMesh.vertices.length / 3);
   }
@@ -98,7 +107,7 @@ export class WebGlRenderer implements Renderer3D {
   render(mesh: LoadedMesh, position: Position, transform: Transform3D) {
     this.#gl.bindVertexArray(mesh.r_vao);
 
-    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(position, transform);
+    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(position, transform, mesh.origin);
 
     const uni = this.#programs.basic.sharedUniforms;
 
@@ -108,16 +117,31 @@ export class WebGlRenderer implements Renderer3D {
     this.#gl.drawArrays(this.#gl.TRIANGLES, 0, mesh.vertices.length / 3);
   }
 
-  #computeViewProjection() {
+  #computeViewProjection(mode: "ortho" | "perspective" = "ortho") {
     const depth = 1000;
+    const aspect = this.#canvas.clientWidth / this.#canvas.clientHeight;
 
-    const projection = mat4.ortho(mat4.create(), 0, this.#canvas.clientWidth, this.#canvas.clientHeight, 0, -depth, depth);
+    // Ortho: parallel rays — good for tile alignment, hard for depth/orientation cues.
+    // Perspective: foreshortening — easier to read which way things face in 3D.
+    let projection: mat4;
+    if (mode === "perspective") {
+      const fov = (120 * Math.PI) / 180;
+      projection = mat4.perspective(mat4.create(), fov, aspect, 0.1, depth);
+    } else {
+      const tilesAcross = 30;
+      const halfW = tilesAcross / 2;
+      const halfH = halfW / aspect;
+      // Symmetric near/far so the camera can sit at the origin in ortho.
+      projection = mat4.ortho(mat4.create(), -halfW, halfW, -halfH, halfH, -depth, depth);
+    }
 
     const camera = mat4.create();
-    mat4.rotateX(camera, camera, (70 * Math.PI) / 180);
-    mat4.rotateY(camera, camera, (15 * Math.PI) / 180);
-    mat4.rotateZ(camera, camera, (0 * Math.PI) / 180);
-    mat4.translate(camera, camera, vec3.fromValues(-400, -400, 0));
+    mat4.rotateX(camera, camera, (-85 * Math.PI) / 180);
+    mat4.rotateY(camera, camera, (20 * Math.PI) / 180);
+    mat4.rotateZ(camera, camera, (85 * Math.PI) / 180);
+    // Perspective needs distance from the subject; ortho does not.
+    const cameraZ = mode === "perspective" ? 10 : 0;
+    mat4.translate(camera, camera, vec3.fromValues(0, 0, cameraZ));
 
     const view = mat4.invert(mat4.create(), camera)!;
     const viewProjection = mat4.multiply(mat4.create(), projection, view);
@@ -125,12 +149,19 @@ export class WebGlRenderer implements Renderer3D {
     return viewProjection;
   }
 
-  #computeWorldTransforms(position: Position, transform: Transform3D) {
+  #computeWorldTransforms(
+    position: Position,
+    transform: Transform3D,
+    origin?: [
+      number, number, number,
+    ],
+  ) {
     // World
     const world = mat4.create();
 
     // world transforms
     mat4.translate(world, world, vec3.fromValues(position.x, position.y, position.z));
+
     mat4.rotateX(world, world, (transform.rotateX * Math.PI) / 180);
     mat4.rotateY(world, world, (transform.rotateY * Math.PI) / 180);
     mat4.rotateZ(world, world, (transform.rotateZ * Math.PI) / 180);
@@ -138,12 +169,22 @@ export class WebGlRenderer implements Renderer3D {
       transform.scaleX, transform.scaleY, transform.scaleZ,
     ]);
 
+    if (origin) {
+      mat4.translate(world, world, vec3.fromValues(-origin[0], -origin[1], -origin[2]));
+    }
     return world;
   }
 
-  #computeDynamicUniforms(position: Position, transform: Transform3D) {
-    const viewProjection = this.#computeViewProjection();
-    const worldTransforms = this.#computeWorldTransforms(position, transform);
+  #computeDynamicUniforms(
+    position: Position,
+    transform: Transform3D,
+    origin?: [
+      number, number, number,
+    ],
+  ) {
+    // Flip to "perspective" when debugging orientations; keep "ortho" for tile work.
+    const viewProjection = this.#computeViewProjection("ortho");
+    const worldTransforms = this.#computeWorldTransforms(position, transform, origin);
 
     const worldViewProjection = mat4.multiply(mat4.create(), viewProjection, worldTransforms);
 
@@ -156,6 +197,7 @@ export class WebGlRenderer implements Renderer3D {
     const transposedInvertedWorldTransforms = mat4.transpose(mat4.create(), invertedWorldTransforms);
 
     return {
+      world: worldTransforms,
       worldViewProjection,
       transposedInvertedWorldTransforms,
     };

@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>World Scale Lab — pick one unit and stick to it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #13171e;
+    --bg-elev: #1b212b;
+    --bg-plot: #0c0f14;
+    --ink: #e8ecf3;
+    --muted: #95a0b4;
+    --faint: #3c4658;
+    --line: #2b3342;
+    --accent: #6ec4a8;
+    --accent2: #e8a45c;
+    --good: #7dcca0;
+    --warn: #e0b85c;
+    --bad: #e07a7a;
+    --radius: 10px;
+    --pad: clamp(1rem, 3vw, 2rem);
+    --max: 46rem;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 70% 45% at 100% 0%, #1a2a24 0%, transparent 50%),
+      radial-gradient(ellipse 50% 35% at 0% 20%, #2a2218 0%, transparent 45%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 1.06rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: var(--pad); padding-bottom: 5rem; }
+
+  header.hero {
+    padding: 2rem 0 1.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.55rem;
+  }
+  h1 {
+    font-family: Syne, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.85rem, 5vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.8rem;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 38rem; }
+  .lede a { color: var(--accent2); }
+
+  .path {
+    margin-top: 1.4rem;
+    display: grid;
+    gap: 0.45rem;
+  }
+  .path a {
+    display: block;
+    text-decoration: none;
+    color: var(--ink);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+  }
+  .path a span {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.15rem;
+  }
+  .path a.now { border-color: var(--accent); }
+  .path a.later { opacity: 0.55; }
+
+  nav.toc {
+    margin: 1.6rem 0 0;
+    display: grid;
+    gap: 0.28rem;
+  }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    border-left: 2px solid var(--faint);
+    padding: 0.12rem 0 0.12rem 0.65rem;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+
+  section { margin: 2.85rem 0; scroll-margin-top: 1.2rem; }
+  h2 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.55rem;
+  }
+  .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--accent);
+    margin-right: 0.35rem;
+  }
+  p { color: var(--muted); margin: 0 0 0.85rem; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.84em;
+    background: #0a0c10;
+    padding: 0.08em 0.32em;
+    border-radius: 4px;
+    color: #c5d0e0;
+  }
+  ul, ol { color: var(--muted); padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+
+  .note {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 0.95rem;
+    margin: 1rem 0 1.15rem;
+    color: var(--muted);
+    font-size: 0.96rem;
+  }
+  .note.warn { border-left-color: var(--warn); }
+  .note.bad { border-left-color: var(--bad); }
+  .note.good { border-left-color: var(--good); }
+  .note strong { color: var(--ink); }
+
+  .lab {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1.05rem 0;
+  }
+  .lab-head {
+    padding: 0.7rem 0.95rem;
+    border-bottom: 1px solid var(--line);
+    background: rgba(0,0,0,0.22);
+  }
+  .lab-title {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.55rem;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 0.7rem 1rem; }
+  .ctrl { flex: 1; min-width: 8.5rem; display: flex; flex-direction: column; gap: 0.18rem; }
+  .ctrl label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .ctrl label .val { color: var(--ink); white-space: nowrap; }
+  .ctrl input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .toggle-row button {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.28rem 0.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .toggle-row button.on {
+    border-color: var(--accent);
+    background: #152820;
+    color: var(--accent);
+  }
+
+  canvas.plot {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--bg-plot);
+  }
+  .readout {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+    padding: 0.55rem 0.95rem;
+    border-top: 1px solid var(--line);
+    line-height: 1.55;
+  }
+  .readout em { color: var(--accent2); font-style: normal; }
+  .formula {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    line-height: 1.65;
+    background: #0a0c10;
+    color: #b8c4d4;
+    padding: 0.85rem 0.95rem;
+    margin: 0;
+    overflow-x: auto;
+    border-top: 1px solid var(--line);
+  }
+  .formula .c { color: #5c667a; }
+  .formula .k { color: #6ec4a8; }
+  .formula .n { color: #e8a45c; }
+
+  .spaces {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    margin: 1rem 0;
+  }
+  .space-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.75rem 0.9rem;
+  }
+  .space-card h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    margin: 0 0 0.3rem;
+    color: var(--accent2);
+  }
+  .space-card p { margin: 0; font-size: 0.92rem; }
+
+  .decide {
+    background: #15241c;
+    border: 1px solid #2a4a38;
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1.2rem 0;
+  }
+  .decide h3 {
+    font-family: Syne, sans-serif;
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    color: var(--good);
+  }
+  .decide p { margin: 0 0 0.5rem; }
+  .decide p:last-child { margin: 0; }
+
+  table.cheat {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 1rem 0;
+  }
+  table.cheat th, table.cheat td {
+    border: 1px solid var(--line);
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    color: var(--muted);
+  }
+  table.cheat th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: var(--bg-elev);
+  }
+  table.cheat td strong { color: var(--ink); }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  footer a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Start here · interactive</p>
+  <h1>World Scale Lab</h1>
+  <p class="lede">
+    Your floor felt “too big” and the debug colors looked weird because
+    <strong style="color:var(--ink)">camera, meshes, entity scales, and grid tiles weren’t speaking the same language</strong>.
+    This lab helps you pick one unit system and see how every piece should use it — before you finish the grid shader.
+  </p>
+
+  <div class="path">
+    <a class="now" href="#pain">
+      <span>0 · You are here</span>
+      World Scale Lab — this page
+    </a>
+    <a href="grid-shader-basics.html">
+      <span>1 · Then</span>
+      Grid Shader Basics — fract / lines
+    </a>
+    <a href="../floor-grid.md">
+      <span>2 · Then implement</span>
+      floor-grid.md — mesh + draw call
+    </a>
+    <a class="later" href="pristine-grid-lab.html">
+      <span>3 · Later</span>
+      Pristine Grid Lab — fancy AA
+    </a>
+  </div>
+
+  <nav class="toc">
+    <a href="#pain">1 · What’s going wrong today</a>
+    <a href="#spaces">2 · Four spaces (local → clip)</a>
+    <a href="#unit">3 · Pick what 1 unit means</a>
+    <a href="#mesh">4 · Unit mesh × scale = world size</a>
+    <a href="#axes">5 · Your axes: XZ ground, Y up</a>
+    <a href="#camera">6 · Ortho camera = “how much world fits on screen”</a>
+    <a href="#playground">7 · Playground: make them agree</a>
+    <a href="#areo">8 · What your code is doing now</a>
+    <a href="#decide">9 · A concrete default for Areo</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="pain">
+  <h2><span class="num">01</span> What’s going wrong today</h2>
+  <p>
+    In your renderer right now, several numbers live in different mental units:
+  </p>
+  <ul>
+    <li><strong>Ortho</strong> uses the canvas size in <em>pixels</em> (<code>0 … width</code>, <code>height … 0</code>).</li>
+    <li><strong>Camera</strong> translates by <code>(-400, -400)</code> — also pixel-ish.</li>
+    <li><strong>Cubes</strong> spawn at <code>x = -400, 0, 400</code> and get scaled to <code>50</code>.</li>
+    <li><strong>Floor plane</strong> is a unit mesh <code>[-0.5, 0.5]</code>, then you scale it for how many tiles across.</li>
+    <li><strong>Grid</strong> will use <code>tileSize</code> in whatever those world numbers happen to be.</li>
+  </ul>
+  <div class="note warn">
+    <strong>Nothing here is “broken.”</strong> It’s just inconsistent.
+    When the floor is 1600 units wide and you color by <code>x / 20</code>, of course almost everything saturates to pink.
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="spaces">
+  <h2><span class="num">02</span> Four spaces</h2>
+  <p>Every vertex walks through these. Grid math must use <strong>world</strong>.</p>
+
+  <div class="spaces">
+    <div class="space-card">
+      <h3>1 · Local / model</h3>
+      <p>Numbers in the mesh file. Your plane/cube use <code>[-0.5, 0.5]</code> (1 unit across at scale 1).</p>
+    </div>
+    <div class="space-card">
+      <h3>2 · World</h3>
+      <p>After translate / rotate / scale. “Meters on the map.” Floor grid, entity positions, and tile size all live here.</p>
+    </div>
+    <div class="space-card">
+      <h3>3 · View / camera</h3>
+      <p>World, but relative to the camera. You rarely invent numbers here by hand.</p>
+    </div>
+    <div class="space-card">
+      <h3>4 · Clip / screen</h3>
+      <p>After projection. GPU rasterizes triangles. <strong>Do not</strong> do grid <code>fract</code> on this.</p>
+    </div>
+  </div>
+
+  <div class="lab" data-lab="pipeline">
+    <div class="lab-head">
+      <div class="lab-title">Follow one corner of the unit plane</div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>scale (uniform) <span class="val" data-out="scale">50</span></label>
+          <input type="range" data-in="scale" min="1" max="400" step="1" value="50" />
+        </div>
+        <div class="ctrl">
+          <label>position.x <span class="val" data-out="px">0</span></label>
+          <input type="range" data-in="px" min="-200" max="200" step="5" value="0" />
+        </div>
+        <div class="ctrl">
+          <label>rotateX° (tip to XZ) <span class="val" data-out="rx">90</span></label>
+          <input type="range" data-in="rx" min="0" max="90" step="5" value="90" />
+        </div>
+      </div>
+    </div>
+    <canvas class="plot" width="720" height="220"></canvas>
+    <div class="readout" data-readout></div>
+    <pre class="formula"><span class="c">// same order as your renderer: T * R * S * local</span>
+worldPos = translate * rotateX * scale * <span class="n">vec3</span>(<span class="n">1</span>, <span class="n">1</span>, <span class="n">0</span>);</pre>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="unit">
+  <h2><span class="num">03</span> Pick what 1 unit means</h2>
+  <p>
+    You don’t need real-world meters. You need a sentence you can repeat:
+  </p>
+  <p style="color:var(--ink)"><em>“In Areo, 1 world unit = one gameplay tile edge.”</em></p>
+  <p>or</p>
+  <p style="color:var(--ink)"><em>“In Areo, 1 world unit = 1 screen pixel at default zoom.”</em> ← what you accidentally have now</p>
+
+  <div class="lab" data-lab="unit-choice">
+    <div class="lab-head">
+      <div class="lab-title">Choose a convention</div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>convention</label>
+          <div class="toggle-row" data-toggles="conv">
+            <button type="button" data-val="tile" class="on">1 = 1 tile</button>
+            <button type="button" data-val="pixel">1 = 1 pixel</button>
+            <button type="button" data-val="meter">1 = 1 meter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="readout" data-readout style="border-top:none"></div>
+  </div>
+
+  <div class="note">
+    <strong>Either works.</strong> Mixing them does not.
+    The rest of this lab assumes you pick one and drive camera + meshes + tiles from it.
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="mesh">
+  <h2><span class="num">04</span> Unit mesh × scale = world size</h2>
+  <p>
+    Your plane vertices span <strong>1</strong> local unit (from −0.5 to +0.5).
+    World size on that axis ≈ <code>scale</code> (after rotation, which axis that is).
+  </p>
+
+  <div class="lab" data-lab="mesh-size">
+    <div class="lab-head">
+      <div class="lab-title">How big is the floor?</div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>plane scaleX (= scaleY after tip) <span class="val" data-out="s">100</span></label>
+          <input type="range" data-in="s" min="1" max="500" step="1" value="100" />
+        </div>
+        <div class="ctrl">
+          <label>tileSize (world units) <span class="val" data-out="tile">1</span></label>
+          <input type="range" data-in="tile" min="0.25" max="50" step="0.25" value="1" />
+        </div>
+      </div>
+    </div>
+    <canvas class="plot" width="720" height="280"></canvas>
+    <div class="readout" data-readout></div>
+  </div>
+
+  <div class="note warn">
+    <strong>Rule of thumb:</strong> if the floor is 200 units across and <code>tileSize = 1</code>, you get ~200 cells.
+    If you can’t see the lines, either zoom in, raise <code>tileSize</code>, or shrink the floor — don’t randomly multiply scale by 5000.
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="axes">
+  <h2><span class="num">05</span> Your axes: XZ ground, Y up</h2>
+  <p>
+    <code>docs/grid-system.md</code> already says ground is <strong>XZ</strong>, height <strong>Y</strong>.
+    The stock plane mesh is on <strong>XY</strong> (facing +Z), so you rotate it <code>rotateX = 90°</code>
+    to lay it flat. After that:
+  </p>
+  <ul>
+    <li>Local <strong>X</strong> → world <strong>X</strong> (still left/right on the ground)</li>
+    <li>Local <strong>Y</strong> → world <strong>Z</strong> (depth on the ground)</li>
+    <li>World <strong>Y</strong> ≈ constant (floor height)</li>
+  </ul>
+
+  <div class="lab" data-lab="axes">
+    <div class="lab-head">
+      <div class="lab-title">Which axes feed the grid?</div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>rotateX°</label>
+          <div class="toggle-row" data-toggles="flat">
+            <button type="button" data-val="0">0° (standing, XY)</button>
+            <button type="button" data-val="90" class="on">90° (flat, XZ)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <canvas class="plot" width="720" height="240"></canvas>
+    <div class="readout" data-readout></div>
+    <pre class="formula"><span class="c">// grid fragment — after the plane is tipped flat</span>
+<span class="k">float</span> fx = <span class="n">fract</span>(v_worldPos.x / u_tileSize);
+<span class="k">float</span> fz = <span class="n">fract</span>(v_worldPos.z / u_tileSize);  <span class="c">// not .y</span></pre>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="camera">
+  <h2><span class="num">06</span> Ortho camera = how much world fits</h2>
+  <p>
+    Your projection is roughly:
+  </p>
+  <pre class="formula" style="border:1px solid var(--line);border-radius:var(--radius);margin:0 0 1rem;"><span class="n">ortho</span>(0, canvasWidth, canvasHeight, 0, -depth, depth)</pre>
+  <p>
+    That means: <strong>at identity view, 1 world unit ≈ 1 CSS pixel</strong> on screen.
+    A cube scaled to 50 is ~50px wide. A floor scaled to 800 covers most of a big monitor.
+  </p>
+  <p>
+    That’s a valid convention (“pixel world”). The pain starts when you treat those numbers
+    as “meters” or “tiles” without deciding.
+  </p>
+
+  <div class="lab" data-lab="ortho">
+    <div class="lab-head">
+      <div class="lab-title">Frustum vs objects</div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>canvas (sim) <span class="val" data-out="cw">800×600</span></label>
+          <input type="range" data-in="cw" min="400" max="1400" step="20" value="800" />
+        </div>
+        <div class="ctrl">
+          <label>cube scale <span class="val" data-out="cube">50</span></label>
+          <input type="range" data-in="cube" min="5" max="200" step="5" value="50" />
+        </div>
+        <div class="ctrl">
+          <label>floor half-extent <span class="val" data-out="floor">100</span></label>
+          <input type="range" data-in="floor" min="10" max="600" step="10" value="100" />
+        </div>
+      </div>
+    </div>
+    <canvas class="plot" width="720" height="300"></canvas>
+    <div class="readout" data-readout></div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="playground">
+  <h2><span class="num">07</span> Playground: make them agree</h2>
+  <p>
+    Set a tile size, entity size (in tiles), floor size (in tiles), and see the world numbers
+    your transforms should use. This is the “cheat sheet” for debugging.
+  </p>
+
+  <div class="lab" data-lab="playground">
+    <div class="lab-head">
+      <div class="lab-title">Design your scale</div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>1 tile = N world units <span class="val" data-out="u">1</span></label>
+          <input type="range" data-in="u" min="1" max="100" step="1" value="1" />
+        </div>
+        <div class="ctrl">
+          <label>entity size (tiles) <span class="val" data-out="ent">1</span></label>
+          <input type="range" data-in="ent" min="0.25" max="4" step="0.25" value="1" />
+        </div>
+        <div class="ctrl">
+          <label>floor size (tiles across) <span class="val" data-out="ft">40</span></label>
+          <input type="range" data-in="ft" min="4" max="120" step="2" value="40" />
+        </div>
+        <div class="ctrl">
+          <label>camera view (tiles across) <span class="val" data-out="view">20</span></label>
+          <input type="range" data-in="view" min="4" max="80" step="2" value="20" />
+        </div>
+      </div>
+    </div>
+    <canvas class="plot" width="720" height="340"></canvas>
+    <div class="readout" data-readout></div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="areo">
+  <h2><span class="num">08</span> What your code is doing now</h2>
+  <table class="cheat">
+    <thead>
+      <tr><th>Piece</th><th>Current-ish numbers</th><th>Implied meaning</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Ortho</strong></td>
+        <td><code>0…canvasW</code>, <code>canvasH…0</code></td>
+        <td>1 unit ≈ 1 pixel</td>
+      </tr>
+      <tr>
+        <td><strong>Camera translate</strong></td>
+        <td><code>(-400, -400, 0)</code></td>
+        <td>Looks toward world region around (400, 400)</td>
+      </tr>
+      <tr>
+        <td><strong>Cube positions</strong></td>
+        <td><code>x = -400, 0, 400</code>, <code>z = 0</code></td>
+        <td>Hundreds of pixels apart</td>
+      </tr>
+      <tr>
+        <td><strong>Cube scale</strong></td>
+        <td><code>50</code> (from movement system)</td>
+        <td>~50px cube if mesh is ~1 unit</td>
+      </tr>
+      <tr>
+        <td><strong>Floor</strong></td>
+        <td>unit plane × scale, <code>rotateX=90</code>, <code>y=200</code></td>
+        <td>Must match the same pixel-world</td>
+      </tr>
+      <tr>
+        <td><strong>Grid tileSize</strong></td>
+        <td>(not wired yet)</td>
+        <td>Should equal “one cell” in that same unit</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note bad">
+    <strong>Classic footgun:</strong> floor scale <code>5000</code> + tileSize <code>1</code> + debug <code>x/20</code>.
+    Three different “feels for size” fighting each other.
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="decide">
+  <h2><span class="num">09</span> A concrete default for Areo</h2>
+  <p>
+    You can change this later. For learning the grid, pick something boring and write it down.
+  </p>
+
+  <div class="decide">
+    <h3>Recommended starter (keeps your pixel-ish ortho)</h3>
+    <p><strong>1 world unit = 1 pixel at default zoom</strong> (matches current <code>ortho</code>).</p>
+    <p><strong>1 gameplay tile = 50 units</strong> (matches your cube scale of 50 — one tile ≈ one cube footprint).</p>
+    <p><strong>Floor:</strong> e.g. 40×40 tiles → plane <code>scale = 40</code> (unit plane is −0.5…0.5).</p>
+    <p><strong>Grid shader:</strong> <code>u_tileSize = 50.0</code>, sample <code>v_worldPos.x</code> and <code>.z</code>.</p>
+    <p><strong>Entity positions:</strong> place on tile centers, e.g. tile (i, j) → <code>(i * 50, height, j * 50)</code>.</p>
+  </div>
+
+  <div class="decide" style="background:#241c14;border-color:#4a3a28;margin-top:0.75rem">
+    <h3 style="color:var(--accent2)">Alternative (cleaner long-term)</h3>
+    <p><strong>1 world unit = 1 tile.</strong> Cubes at scale ~1. Floor scale ~ half tile count. <code>u_tileSize = 1</code>.</p>
+    <p>Then change ortho to something like “show N tiles across,” not canvas pixels.
+      Bigger refactor — do it when the pixel-world starts fighting gameplay.</p>
+  </div>
+
+  <div class="note good">
+    <strong>Before coding more grid:</strong> write your choice into <code>docs/grid-system.md</code>
+    (unit meaning + tile size in world units + axes). Then every new number has a home.
+  </div>
+
+  <p>
+    Next: <a href="grid-shader-basics.html" style="color:var(--accent2)">Grid Shader Basics</a>
+    with a <code>tileSize</code> that matches the decision above.
+  </p>
+</section>
+
+<footer>
+  Grounded in your current <code>WebGlRenderer</code> ortho + mesh setup.
+  Pair with <a href="../floor-grid.md">floor-grid.md</a> and <a href="grid-shader-basics.html">grid-shader-basics.html</a>.
+</footer>
+
+</div>
+
+<script>
+const lerp = (a, b, t) => a + (b - a) * t;
+
+function labState(root) {
+  const state = {};
+  root.querySelectorAll("[data-in]").forEach((el) => {
+    state[el.dataset.in] = parseFloat(el.value);
+    const sync = () => {
+      state[el.dataset.in] = parseFloat(el.value);
+      const out = root.querySelector(`[data-out="${el.dataset.in}"]`);
+      if (out) {
+        if (el.dataset.in === "cw") {
+          const w = state.cw;
+          out.textContent = `${w|0}×${((w * 0.75) | 0)}`;
+        } else {
+          const v = state[el.dataset.in];
+          out.textContent = Number.isInteger(v) || Math.abs(v % 1) < 1e-6 ? String(v) : v.toFixed(2);
+        }
+      }
+      root._draw?.();
+    };
+    el.addEventListener("input", sync);
+    sync();
+  });
+  root.querySelectorAll("[data-toggles]").forEach((row) => {
+    const key = row.dataset.toggles;
+    const on = row.querySelector("button.on") || row.querySelector("button");
+    state[key] = on.dataset.val;
+    row.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        row.querySelectorAll("button").forEach((b) => b.classList.remove("on"));
+        btn.classList.add("on");
+        state[key] = btn.dataset.val;
+        root._draw?.();
+      });
+    });
+  });
+  return state;
+}
+
+function clear(ctx, w, h) {
+  ctx.fillStyle = "#0c0f14";
+  ctx.fillRect(0, 0, w, h);
+}
+
+function rotX(v, deg) {
+  const r = (deg * Math.PI) / 180;
+  const c = Math.cos(r), s = Math.sin(r);
+  return { x: v.x, y: v.y * c - v.z * s, z: v.y * s + v.z * c };
+}
+
+/* pipeline */
+(() => {
+  const root = document.querySelector('[data-lab="pipeline"]');
+  const canvas = root.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+  const readout = root.querySelector("[data-readout]");
+  const state = labState(root);
+
+  function draw() {
+    const w = canvas.width, h = canvas.height;
+    clear(ctx, w, h);
+    const local = { x: 1, y: 1, z: 0 };
+    const scaled = { x: local.x * state.scale, y: local.y * state.scale, z: 0 };
+    const rotated = rotX(scaled, state.rx);
+    const world = { x: rotated.x + state.px, y: rotated.y, z: rotated.z };
+
+    const stages = [
+      { name: "local", v: local, color: "#95a0b4" },
+      { name: "× scale", v: scaled, color: "#6ec4a8" },
+      { name: "× rotX", v: rotated, color: "#e8a45c" },
+      { name: "+ pos", v: world, color: "#e07a7a" },
+    ];
+
+    const colW = w / stages.length;
+    stages.forEach((st, i) => {
+      const cx = colW * i + colW / 2;
+      ctx.fillStyle = st.color;
+      ctx.font = "12px IBM Plex Mono";
+      ctx.textAlign = "center";
+      ctx.fillText(st.name, cx, 28);
+      ctx.fillStyle = "#e8ecf3";
+      ctx.font = "13px IBM Plex Mono";
+      ctx.fillText(`(${st.v.x.toFixed(1)}, ${st.v.y.toFixed(1)}, ${st.v.z.toFixed(1)})`, cx, 56);
+
+      // mini axis sketch
+      const ox = cx, oy = h - 50;
+      const k = 0.08;
+      ctx.strokeStyle = "#2b3342";
+      ctx.beginPath();
+      ctx.moveTo(ox - 40, oy);
+      ctx.lineTo(ox + 40, oy);
+      ctx.moveTo(ox, oy + 20);
+      ctx.lineTo(ox, oy - 50);
+      ctx.stroke();
+      ctx.fillStyle = st.color;
+      ctx.beginPath();
+      ctx.arc(ox + st.v.x * k, oy - st.v.z * k, 5, 0, Math.PI * 2);
+      ctx.fill();
+      if (i < stages.length - 1) {
+        ctx.fillStyle = "#3c4658";
+        ctx.fillText("→", colW * (i + 1), 56);
+      }
+    });
+
+    readout.innerHTML =
+      `Corner <em>(1,1,0)</em> → world <em>(${world.x.toFixed(1)}, ${world.y.toFixed(1)}, ${world.z.toFixed(1)})</em>. ` +
+      (state.rx >= 90
+        ? "At 90°, local Y became world Z — ground is XZ."
+        : "Not flat yet — local Y is still partly world Y.");
+  }
+  root._draw = draw;
+  draw();
+})();
+
+/* unit choice */
+(() => {
+  const root = document.querySelector('[data-lab="unit-choice"]');
+  const readout = root.querySelector("[data-readout]");
+  const state = labState(root);
+  const text = {
+    tile: "Gameplay-friendly. Cube scale ≈ 1, tileSize = 1, floor scale ≈ half the tile count. You’ll eventually want ortho in tiles, not raw canvas pixels.",
+    pixel: "Matches your current ortho. Cube scale 50 ≈ 50px. tileSize should be something like 50 if one tile = one cube. Floor scale in the hundreds/thousands is normal — but write it as “N tiles × 50,” not a magic number.",
+    meter: "Nice for “realism,” awkward with pixel ortho. Only pick this if you’ll also redefine the camera in meters.",
+  };
+  function draw() {
+    readout.innerHTML = `<em>${state.conv}</em> — ${text[state.conv]}`;
+  }
+  root._draw = draw;
+  draw();
+})();
+
+/* mesh size */
+(() => {
+  const root = document.querySelector('[data-lab="mesh-size"]');
+  const canvas = root.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+  const readout = root.querySelector("[data-readout]");
+  const state = labState(root);
+
+  function draw() {
+    const w = canvas.width, h = canvas.height;
+    clear(ctx, w, h);
+    const extent = state.s; // full size in world: unit plane [-0.5,0.5] × scale
+    const full = extent;
+    const tile = state.tile;
+    const cells = full / tile;
+
+    // top-down floor square
+    const pad = 40;
+    const side = Math.min(w - pad * 2, h - 70);
+    const ox = (w - side) / 2;
+    const oy = 36;
+
+    ctx.strokeStyle = "#6ec4a8";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ox, oy, side, side);
+
+    const maxLines = 40;
+    const step = side / Math.min(cells, maxLines);
+    ctx.strokeStyle = "#2b3342";
+    ctx.lineWidth = 1;
+    if (cells <= maxLines) {
+      for (let i = 0; i <= cells; i++) {
+        const p = ox + (i / cells) * side;
+        const q = oy + (i / cells) * side;
+        ctx.beginPath();
+        ctx.moveTo(p, oy);
+        ctx.lineTo(p, oy + side);
+        ctx.moveTo(ox, q);
+        ctx.lineTo(ox + side, q);
+        ctx.stroke();
+      }
+    } else {
+      for (let i = 0; i <= maxLines; i++) {
+        const p = ox + i * step;
+        ctx.beginPath();
+        ctx.moveTo(p, oy);
+        ctx.lineTo(p, oy + side);
+        ctx.moveTo(ox, oy + i * step);
+        ctx.lineTo(ox + side, oy + i * step);
+        ctx.stroke();
+      }
+    }
+
+    ctx.fillStyle = "#e8a45c";
+    ctx.font = "12px IBM Plex Mono";
+    ctx.fillText(`floor ${full.toFixed(0)} × ${full.toFixed(0)} world units`, ox, oy - 10);
+
+    readout.innerHTML =
+      `Unit plane <em>[-0.5, 0.5]</em> × scale <em>${state.s}</em> → ~<em>${full.toFixed(0)}</em> units across. ` +
+      `tileSize <em>${tile}</em> → ~<em>${cells.toFixed(1)}</em> cells` +
+      (cells > maxLines ? ` (drawing a preview subsample — too dense to show every line)` : ``) +
+      `.`;
+  }
+  root._draw = draw;
+  draw();
+})();
+
+/* axes */
+(() => {
+  const root = document.querySelector('[data-lab="axes"]');
+  const canvas = root.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+  const readout = root.querySelector("[data-readout]");
+  const state = labState(root);
+
+  function draw() {
+    const w = canvas.width, h = canvas.height;
+    clear(ctx, w, h);
+    const flat = state.flat === "90";
+    const cx = w / 2, cy = h / 2 + 10;
+
+    // draw a quad in 2D projection
+    const corners = [
+      { x: -1, y: -1, z: 0 },
+      { x: 1, y: -1, z: 0 },
+      { x: 1, y: 1, z: 0 },
+      { x: -1, y: 1, z: 0 },
+    ].map((c) => {
+      const s = { x: c.x * 80, y: c.y * 80, z: 0 };
+      return rotX(s, flat ? 90 : 0);
+    });
+
+    // simple perspective-ish: x' = x + 0.4*z, y' = -y - 0.2*z for standing; for flat use x and z
+    function proj(v) {
+      if (flat) return { x: cx + v.x + v.z * 0.35, y: cy - v.z * 0.55 + v.y * 0.1 };
+      return { x: cx + v.x + v.z * 0.2, y: cy - v.y };
+    }
+
+    const pts = corners.map(proj);
+    ctx.fillStyle = "#1a2830";
+    ctx.strokeStyle = "#6ec4a8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // axes
+    ctx.font = "12px IBM Plex Mono";
+    if (flat) {
+      ctx.strokeStyle = "#e07a7a";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + 90, cy);
+      ctx.stroke();
+      ctx.fillStyle = "#e07a7a";
+      ctx.fillText("+X (ground)", cx + 96, cy + 4);
+
+      ctx.strokeStyle = "#e8a45c";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + 40, cy - 70);
+      ctx.stroke();
+      ctx.fillStyle = "#e8a45c";
+      ctx.fillText("+Z (ground)", cx + 46, cy - 74);
+
+      ctx.strokeStyle = "#6ec4a8";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx, cy - 50);
+      ctx.stroke();
+      ctx.fillStyle = "#6ec4a8";
+      ctx.fillText("+Y (up)", cx + 6, cy - 54);
+    } else {
+      ctx.fillStyle = "#95a0b4";
+      ctx.fillText("Plane still on XY (like a wall facing you)", cx - 120, 28);
+      ctx.strokeStyle = "#e07a7a";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + 90, cy);
+      ctx.stroke();
+      ctx.fillStyle = "#e07a7a";
+      ctx.fillText("+X", cx + 96, cy);
+      ctx.strokeStyle = "#6ec4a8";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx, cy - 80);
+      ctx.stroke();
+      ctx.fillStyle = "#6ec4a8";
+      ctx.fillText("+Y", cx + 6, cy - 84);
+    }
+
+    readout.innerHTML = flat
+      ? `Flat floor: grid uses <em>world.x</em> and <em>world.z</em>. Height is <em>world.y</em>.`
+      : `Standing plane: you’d be gridding a wall. Tip it to 90° for a floor.`;
+  }
+  root._draw = draw;
+  draw();
+})();
+
+/* ortho */
+(() => {
+  const root = document.querySelector('[data-lab="ortho"]');
+  const canvas = root.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+  const readout = root.querySelector("[data-readout]");
+  const state = labState(root);
+
+  function draw() {
+    const w = canvas.width, h = canvas.height;
+    clear(ctx, w, h);
+    const cw = state.cw;
+    const ch = cw * 0.75;
+    const cube = state.cube;
+    const floor = state.floor; // half extent
+
+    // map world (0..cw, 0..ch) into canvas with padding — top-down approx of ortho box
+    const pad = 36;
+    const scale = Math.min((w - pad * 2) / cw, (h - pad * 2) / ch);
+    const ox = (w - cw * scale) / 2;
+    const oy = (h - ch * scale) / 2;
+
+    ctx.strokeStyle = "#3c4658";
+    ctx.strokeRect(ox, oy, cw * scale, ch * scale);
+    ctx.fillStyle = "#95a0b4";
+    ctx.font = "11px IBM Plex Mono";
+    ctx.fillText("ortho view (approx top-down)", ox, oy - 8);
+
+    // floor centered near (cw/2, ch/2) mentally — draw around center
+    const cx = ox + (cw * 0.5) * scale;
+    const cy = oy + (ch * 0.5) * scale;
+    const fs = floor * scale;
+    ctx.fillStyle = "#1a283088";
+    ctx.strokeStyle = "#6ec4a8";
+    ctx.fillRect(cx - fs, cy - fs, fs * 2, fs * 2);
+    ctx.strokeRect(cx - fs, cy - fs, fs * 2, fs * 2);
+
+    const cs = (cube / 2) * scale;
+    ctx.fillStyle = "#e07a7a";
+    ctx.fillRect(cx - cs, cy - cs, cs * 2, cs * 2);
+
+    const fits = floor * 2 <= Math.min(cw, ch);
+    readout.innerHTML =
+      `View shows ~<em>${cw|0}×${ch|0}</em> world units. ` +
+      `Floor diameter <em>${(floor * 2)|0}</em>, cube <em>${cube}</em>. ` +
+      (fits
+        ? `Floor fits in the view — good for debugging.`
+        : `<em>Floor larger than view</em> — you’ll only see a patch (fine for a real game, confusing while learning).`);
+  }
+  root._draw = draw;
+  draw();
+})();
+
+/* playground */
+(() => {
+  const root = document.querySelector('[data-lab="playground"]');
+  const canvas = root.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+  const readout = root.querySelector("[data-readout]");
+  const state = labState(root);
+
+  function draw() {
+    const w = canvas.width, h = canvas.height;
+    clear(ctx, w, h);
+
+    const u = state.u; // world units per tile
+    const entTiles = state.ent;
+    const floorTiles = state.ft;
+    const viewTiles = state.view;
+
+    const tileWorld = u;
+    const entWorld = entTiles * u;
+    const floorWorld = floorTiles * u;
+    const viewWorld = viewTiles * u;
+    const planeScale = floorWorld; // unit plane [-0.5,0.5] → scale = tiles across
+
+    // diagram
+    const pad = 50;
+    const side = Math.min(w - pad * 2, h - 100);
+    const ox = (w - side) / 2;
+    const oy = 30;
+
+    // view rect
+    const viewFrac = Math.min(1, viewTiles / floorTiles);
+    const viewSide = side * viewFrac;
+    const vx = ox + (side - viewSide) / 2;
+    const vy = oy + (side - viewSide) / 2;
+
+    ctx.fillStyle = "#15241c";
+    ctx.strokeStyle = "#6ec4a8";
+    ctx.lineWidth = 2;
+    ctx.fillRect(ox, oy, side, side);
+    ctx.strokeRect(ox, oy, side, side);
+
+    // tiles
+    const n = Math.min(floorTiles, 24);
+    ctx.strokeStyle = "#2b3342";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= n; i++) {
+      const p = ox + (i / n) * side;
+      const q = oy + (i / n) * side;
+      ctx.beginPath();
+      ctx.moveTo(p, oy); ctx.lineTo(p, oy + side);
+      ctx.moveTo(ox, q); ctx.lineTo(ox + side, q);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = "#e8a45c";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(vx, vy, viewSide, viewSide);
+    ctx.setLineDash([]);
+
+    // entity
+    const es = (entTiles / floorTiles) * side;
+    ctx.fillStyle = "#e07a7a";
+    ctx.fillRect(ox + side / 2 - es / 2, oy + side / 2 - es / 2, es, es);
+
+    ctx.fillStyle = "#95a0b4";
+    ctx.font = "11px IBM Plex Mono";
+    ctx.fillText("floor", ox, oy - 8);
+    ctx.fillStyle = "#e8a45c";
+    ctx.fillText("camera view", vx, vy - 8);
+
+    readout.innerHTML =
+      `<em>u_tileSize = ${tileWorld}</em> · ` +
+      `cube scale ≈ <em>${entWorld}</em> · ` +
+      `plane scale ≈ <em>${planeScale}</em> ` +
+      `(floor ${floorWorld} units across) · ` +
+      `ortho width ≈ <em>${viewWorld}</em> units ` +
+      `(if you leave pixel-ortho, that’s also ~${viewWorld|0}px at default zoom).`;
+  }
+  root._draw = draw;
+  draw();
+})();
+</script>
+</body>
+</html>

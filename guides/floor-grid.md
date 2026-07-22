@@ -22,20 +22,29 @@ clear
 
 ---
 
-## Concepts to learn (read these before coding)
 
-Skim just enough to know what each word means, then come back when stuck:
+
+## Learning path (do this before / alongside coding)
+
+1. **[world-scale-lab.html](labs/world-scale-lab.html)** — start here if sizes feel random. Pick what 1 unit means; align floor / tiles / camera.
+2. **[grid-shader-basics.html](labs/grid-shader-basics.html)** — world position → `fract` → lines → a first grid. Open in a browser.
+3. **This guide** — mesh, second program, draw order in *your* engine.
+4. **[pristine-grid-lab.html](labs/pristine-grid-lab.html)** — later / optional. Golus-style AA. Skip until a jaggy grid already works.
+
+### Concepts you’ll meet
 
 - **Vertex shader vs fragment shader** — what runs per vertex vs per pixel
 - **Uniforms** — values you set from JS/TS each frame (color, tile size, matrices)
-- **Varyings / `out` → `in`** — how the vertex shader passes data to the fragment shader
-- **World space vs clip space** — why grid math should use world XY (or XZ), not `gl_Position`
-- **`fract`** — how repeating patterns work in shaders
-- **`fwidth` / `smoothstep`** — why lines stay anti-aliased when the camera tilts
+- **Varyings /** `out` **→** `in` — how the vertex shader passes data to the fragment shader
+- **World space vs clip space** — why grid math should use world XZ (not `gl_Position`)
+- `fract` — how repeating patterns work in shaders
+- `fwidth` **/** `smoothstep` — optional polish after a hard-edged grid works
 
-You do **not** need a textbook. One short article or chapter each is enough.
+Your ground plane is **XZ**, height **Y** (see `docs/grid-system.md`).
 
 ---
+
+
 
 ## Step 0 — Decide the ground plane
 
@@ -47,6 +56,8 @@ Your entities currently use `x`, `y`, with `z ≈ 0`. Pick one and stick to it f
 Write it down. Every position and shader sample for the grid must use the same two axes.
 
 ---
+
+
 
 ## Step 1 — A floor mesh
 
@@ -62,6 +73,8 @@ Hints:
 Checkpoint: you could draw this quad with the **existing** `basic` shader as a flat colored plane. If that works, geometry and upload path are fine.
 
 ---
+
+
 
 ## Step 2 — A second shader program
 
@@ -86,6 +99,8 @@ Start with **fixed** `u_tileSize` and hard-coded colors. Zoom comes later.
 Checkpoint: one gray grid over a dark floor. Lines may look jaggy; that’s OK for now.
 
 ---
+
+
 
 ## Step 3 — Wire it into the renderer
 
@@ -115,6 +130,8 @@ Checkpoint: entities appear on top of the grid.
 
 ---
 
+
+
 ## Step 4 — Make the lines look decent
 
 Improve the fragment shader without changing the mesh:
@@ -126,6 +143,8 @@ Improve the fragment shader without changing the mesh:
 If lines disappear or fill the whole screen, your spacing math or axes are wrong — print/debug world coords (e.g. color by `fract(world / tileSize)`).
 
 ---
+
+
 
 ## Step 5 — Zoom-aware spacing (optional second milestone)
 
@@ -140,6 +159,8 @@ Keep **gameplay** cell size separate in your head: visual guide can coarsen when
 
 ---
 
+
+
 ## Step 6 — Align with future gameplay (when you’re ready)
 
 Not required for the visual:
@@ -151,19 +172,25 @@ Don’t store the visual grid as one ECS entity per cell.
 
 ---
 
+
+
 ## Suggested file / responsibility split
 
 Vague on purpose — place things where *your* project already puts similar code:
 
-| Piece | Belongs with |
-|--------|----------------|
-| GLSL source | shaders |
-| Floor mesh data | shapes / mesh catalog |
-| Program create + draw floor | renderer |
-| Zoom → tileSize | camera / renderer uniforms |
-| Logical map cells | game world (later, separate) |
+
+| Piece                       | Belongs with                 |
+| --------------------------- | ---------------------------- |
+| GLSL source                 | shaders                      |
+| Floor mesh data             | shapes / mesh catalog        |
+| Program create + draw floor | renderer                     |
+| Zoom → tileSize             | camera / renderer uniforms   |
+| Logical map cells           | game world (later, separate) |
+
 
 ---
+
+
 
 ## Order of work (checklist)
 
@@ -177,6 +204,8 @@ Vague on purpose — place things where *your* project already puts similar code
 
 ---
 
+
+
 ## When you’re stuck
 
 Ask in this order:
@@ -189,6 +218,8 @@ Ask in this order:
 If (1) fails, it’s upload/matrices/draw call. If (2)–(3) fail, it’s varyings/axes. If (4) fails, it’s the line formula.
 
 ---
+
+
 
 ## Out of scope (on purpose)
 

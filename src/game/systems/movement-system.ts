@@ -2,8 +2,6 @@ import { GameComponent } from "../../engine/components/components";
 import type { World, WorldStorage } from "../world";
 
 export class MovementSystem extends GameComponent<WorldStorage> {
-  #scale = 100;
-
   constructor(world: World) {
     super(world);
   }
@@ -22,12 +20,11 @@ export class MovementSystem extends GameComponent<WorldStorage> {
       }
 
       if (trans3d) {
-        // trans3d.rotateY += 0.2;
+        trans3d.rotateY += 0.2;
         // trans3d.rotateZ += 0.2;
-        trans3d.rotateX += 1;
-        trans3d.scaleX = 50;
-        trans3d.scaleZ = 50;
-        trans3d.scaleY = 50;
+        // trans3d.rotateX += 1;
+        // Don't override scale here — unit meshes use whatever scale the entity was spawned with
+        // (1 = one tile; ~100 if you're still matching pixel-sized ortho).
       }
 
       if (trans) {

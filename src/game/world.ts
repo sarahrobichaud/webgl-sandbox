@@ -1,5 +1,4 @@
 import { GameWorld } from "../engine/core/world";
-import type { Grid } from "./grid/grid";
 
 export type WorldStorage = "grids";
 
@@ -9,10 +8,5 @@ export type WorldStorage = "grids";
 export class World extends GameWorld<WorldStorage> {
   constructor() {
     super();
-    this.addStorage("grids");
-  }
-
-  get grids() {
-    return this.getStorage<Grid>("grids");
   }
 }

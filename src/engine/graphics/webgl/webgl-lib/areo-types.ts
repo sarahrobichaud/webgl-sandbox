@@ -28,6 +28,9 @@ export interface RendererHints {
 export interface Mesh extends RendererHints {
   vertices: number[];
   normals: number[];
+  origin?: [
+    number, number, number,
+  ];
 }
 
 export type LoadedMesh = Required<Mesh>;

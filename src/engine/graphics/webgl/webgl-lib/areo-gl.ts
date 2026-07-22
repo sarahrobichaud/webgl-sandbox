@@ -33,8 +33,9 @@ export class AreoGL {
     const success = this.#c.getProgramParameter(program, this.#c.LINK_STATUS);
 
     if (!success) {
+      const log = this.#c.getProgramInfoLog(program);
       this.#c.deleteProgram(program);
-      console.log(this.#c.getProgramInfoLog(program));
+      throw new Error(`Program link failed (${name}): ${log}`);
     }
 
     return this.#createProgramInfo(name, program);
@@ -186,8 +187,10 @@ export class AreoGL {
     const success = this.#c.getShaderParameter(shader, this.#c.COMPILE_STATUS);
 
     if (!success) {
+      const log = this.#c.getShaderInfoLog(shader);
       this.#c.deleteShader(shader);
-      console.log(this.#c.getShaderInfoLog(shader));
+      const kind = type === this.#c.VERTEX_SHADER ? "vertex" : "fragment";
+      throw new Error(`Shader compile failed (${kind}): ${log}`);
     }
 
     return shader;

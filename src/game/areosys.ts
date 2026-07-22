@@ -25,9 +25,10 @@ export class AeroSys extends Game {
     }
 
     this.#registerMeshes(this.#world);
-    this.#createTile(this.#world, -400, 0);
+
+    this.#createTile(this.#world, -2, 2);
     this.#createTile(this.#world, 0, 0);
-    this.#createTile(this.#world, 400, 0);
+    this.#createTile(this.#world, 2, -2);
 
     this.loadWorld(this.#world);
   }
@@ -38,11 +39,11 @@ export class AeroSys extends Game {
     }
   }
 
-  #createTile(world: World, x: number, y: number, meshId: MeshId = "cube"): EntityId {
+  #createTile(world: World, x: number, z: number, meshId: MeshId = "cube"): EntityId {
     const id = world.createEntity([
       "simple",
     ]);
-    world.positions.set(id, { x, y, z: 0 });
+    world.positions.set(id, { x, y: 0, z: z });
     world.movables.set(id, { velocities: vec3.fromValues(1, 0, 0) });
     world.meshIds.set(id, meshId);
     world.transform3D.set(id, {
