@@ -1,5 +1,5 @@
 import type { Mesh } from "../graphics/webgl/webgl-lib/areo-types";
-import type { Definition, Drawable, Movable, Position, Transform2D, Transform3D } from "./primitives";
+import type { Definition, Drawable, Movable, Position, Transform3D } from "./primitives";
 import type { EntityId } from "./types";
 
 /**
@@ -19,7 +19,6 @@ export class GameWorld<StorageKey extends string> {
     meshes: new Map<string, Mesh>(),
     meshIds: new Map<EntityId, string>(),
 
-    transforms2D: new Map<EntityId, Transform2D>(),
     transforms3D: new Map<EntityId, Transform3D>(),
 
     movables: new Map<EntityId, Movable>(),
@@ -54,10 +53,6 @@ export class GameWorld<StorageKey extends string> {
 
   get positions() {
     return this.#storage.positions;
-  }
-
-  get transforms2D() {
-    return this.#storage.transforms2D;
   }
 
   get transform3D() {

@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Input Manager Lab — first keyboard input for Areo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #12161d;
+    --bg-elev: #1a202a;
+    --bg-plot: #0b0e13;
+    --ink: #e8ecf3;
+    --muted: #95a0b4;
+    --faint: #3c4658;
+    --line: #2b3342;
+    --accent: #8eb4e8;
+    --accent2: #e8a45c;
+    --good: #7dcca0;
+    --warn: #e0b85c;
+    --bad: #e07a7a;
+    --radius: 10px;
+    --pad: clamp(1rem, 3vw, 2rem);
+    --max: 46rem;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 65% 40% at 0% 0%, #1a2438 0%, transparent 55%),
+      radial-gradient(ellipse 50% 35% at 100% 10%, #1e2818 0%, transparent 45%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 1.06rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: var(--pad); padding-bottom: 5rem; }
+
+  header.hero {
+    padding: 2rem 0 1.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.55rem;
+  }
+  h1 {
+    font-family: Syne, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.85rem, 5vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.8rem;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 38rem; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .meta {
+    margin-top: 1.1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+  }
+  .pill em { color: var(--accent); font-style: normal; }
+
+  nav.toc {
+    margin: 1.6rem 0 0;
+    display: grid;
+    gap: 0.28rem;
+  }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    border-left: 2px solid var(--faint);
+    padding: 0.12rem 0 0.12rem 0.65rem;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+
+  section { margin: 2.85rem 0; scroll-margin-top: 1.2rem; }
+  h2 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.55rem;
+  }
+  h3 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 1.35rem 0 0.4rem;
+  }
+  .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--accent);
+    margin-right: 0.35rem;
+  }
+  p { color: var(--muted); margin: 0 0 0.85rem; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.84em;
+    background: #0a0c10;
+    padding: 0.08em 0.32em;
+    border-radius: 4px;
+    color: #c5d0e0;
+  }
+  ul, ol { color: var(--muted); padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+
+  .note {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 0.95rem;
+    margin: 1rem 0 1.15rem;
+    color: var(--muted);
+    font-size: 0.96rem;
+  }
+  .note.warn { border-left-color: var(--warn); }
+  .note.bad { border-left-color: var(--bad); }
+  .note.good { border-left-color: var(--good); }
+  .note strong { color: var(--ink); }
+
+  .lab {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1.05rem 0;
+  }
+  .lab-head {
+    padding: 0.7rem 0.95rem;
+    border-bottom: 1px solid var(--line);
+    background: rgba(0,0,0,0.22);
+  }
+  .lab-title {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+  }
+  .lab-hint {
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin: 0;
+  }
+  .lab-body { padding: 0.85rem 0.95rem; }
+  .lab-body:empty { display: none; }
+
+  .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0.2rem;
+  }
+  .key {
+    min-width: 2.6rem;
+    text-align: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid var(--faint);
+    background: var(--bg-plot);
+    color: var(--muted);
+    transition: background 0.05s, border-color 0.05s, color 0.05s;
+  }
+  .key.down {
+    border-color: var(--accent);
+    background: #152033;
+    color: var(--accent);
+  }
+  .key.pressed {
+    border-color: var(--good);
+    background: #15241c;
+    color: var(--good);
+    box-shadow: 0 0 0 1px #2a4a38;
+  }
+  .key.released {
+    border-color: var(--accent2);
+    background: #2a2218;
+    color: var(--accent2);
+  }
+
+  .event-log {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    line-height: 1.55;
+    color: var(--muted);
+    background: var(--bg-plot);
+    border-top: 1px solid var(--line);
+    max-height: 9.5rem;
+    overflow: auto;
+    padding: 0.55rem 0.95rem;
+  }
+  .event-log .dn { color: var(--good); }
+  .event-log .up { color: var(--accent2); }
+  .event-log .fr { color: var(--accent); }
+  .event-log .warn { color: var(--warn); }
+
+  .readout {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+    padding: 0.55rem 0.95rem;
+    border-top: 1px solid var(--line);
+    line-height: 1.55;
+  }
+  .readout em { color: var(--accent); font-style: normal; }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+    margin: 0.85rem 0;
+  }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  .space-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.75rem 0.9rem;
+  }
+  .space-card h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    margin: 0 0 0.3rem;
+    color: var(--accent2);
+  }
+  .space-card p { margin: 0; font-size: 0.92rem; }
+
+  pre.code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    background: #0a0c10;
+    color: #b8c4d4;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.85rem 0.95rem;
+    overflow-x: auto;
+    margin: 0.9rem 0 1.1rem;
+  }
+  pre.code .c { color: #5c667a; }
+  pre.code .k { color: var(--accent); }
+  pre.code .s { color: var(--good); }
+  pre.code .n { color: var(--accent2); }
+  pre.code .p { color: #c5d0e0; }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0.8rem 0;
+  }
+  .checklist li {
+    position: relative;
+    padding: 0.45rem 0.45rem 0.45rem 1.85rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-elev);
+    margin-bottom: 0.4rem;
+    color: var(--muted);
+  }
+  .checklist li::before {
+    content: "☐";
+    position: absolute;
+    left: 0.65rem;
+    top: 0.45rem;
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--accent);
+  }
+
+  .decide {
+    background: #15241c;
+    border: 1px solid #2a4a38;
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1.2rem 0;
+  }
+  .decide h3 {
+    font-family: Syne, sans-serif;
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    color: var(--good);
+  }
+  .decide p { margin: 0 0 0.5rem; }
+  .decide p:last-child { margin: 0; }
+
+  table.cheat {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 1rem 0;
+  }
+  table.cheat th, table.cheat td {
+    border: 1px solid var(--line);
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    color: var(--muted);
+  }
+  table.cheat th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: var(--bg-elev);
+  }
+  table.cheat td strong { color: var(--ink); }
+
+  canvas.plot {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--bg-plot);
+    cursor: crosshair;
+    touch-action: none;
+  }
+  canvas.plot:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+  .btn-row button {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.32rem 0.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .btn-row button:hover { border-color: var(--accent); color: var(--accent); }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  footer a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Game systems · interactive · ~45–60 min</p>
+  <h1>Input Manager Lab</h1>
+  <p class="lede">
+    You’re an experienced app developer. Games need a different input habit:
+    <strong>systems query a stable per-frame snapshot</strong>, they don’t subscribe to DOM events.
+    This lab gets you from your stub <code>InputManager</code> to a keyboard manager wired through
+    <code>LogicContext</code> — enough to move a camera or entity with WASD.
+  </p>
+
+  <div class="meta">
+    <span class="pill">Audience · <em>experienced JS/TS, new to game loops</em></span>
+    <span class="pill">Scope · <em>keyboard first</em></span>
+    <span class="pill">Repo · <em>src/engine/input/</em></span>
+    <span class="pill">Out of scope · <em>gamepad, rebinding UI</em></span>
+  </div>
+
+  <div class="path" style="margin-top:1.4rem;display:grid;gap:0.45rem">
+    <a href="input-architecture-lab.html" style="display:block;text-decoration:none;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:0.65rem 0.85rem;font-size:0.92rem">
+      <span style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--accent);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.15rem">0 · Map</span>
+      Input Architecture Lab — the stack
+    </a>
+    <a href="#mindset" style="display:block;text-decoration:none;color:var(--ink);background:var(--bg-elev);border:1px solid var(--accent);border-radius:8px;padding:0.65rem 0.85rem;font-size:0.92rem">
+      <span style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--accent);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.15rem">1 · You are here</span>
+      Input Manager Lab — keyboard
+    </a>
+    <a href="mouse-input-lab.html" style="display:block;text-decoration:none;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:0.65rem 0.85rem;font-size:0.92rem;opacity:0.7">
+      <span style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--accent);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:0.15rem">2 · Next</span>
+      Mouse Input Lab
+    </a>
+  </div>
+
+  <nav class="toc">
+    <a href="#mindset">1 · Events vs frame queries</a>
+    <a href="#states">2 · Down / pressed / released</a>
+    <a href="#demo-edges">3 · Live: edge detection</a>
+    <a href="#contract">4 · Design the contract</a>
+    <a href="#implement">5 · Implement keyboard state</a>
+    <a href="#wire">6 · Wire into Areo’s loop</a>
+    <a href="#use">7 · Use it from a system</a>
+    <a href="#gotchas">8 · Browser gotchas</a>
+    <a href="#done">9 · Done checklist + stretch</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="mindset">
+  <h2><span class="num">01</span> Events vs frame queries</h2>
+  <p>
+    In a React app, you often react to a keydown: open a modal, submit a form.
+    In a game, input is sampled every tick alongside physics and AI.
+  </p>
+
+  <div class="grid2">
+    <div class="space-card">
+      <h3>App / UI habit</h3>
+      <p>Event → handler → side effect. Order is “whenever the browser fires.”</p>
+    </div>
+    <div class="space-card">
+      <h3>Game habit</h3>
+      <p>Event → update internal state → <em>systems ask</em> “is Jump down this frame?” during <code>#update</code>.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Why the indirection?</strong> Your game loop already owns time
+    (<code>deltaTime</code> in <code>Game.#update</code>). Input must speak that same language,
+    or movement speed, jump-once, and “key stuck after alt-tab” become chaos.
+  </div>
+
+  <div class="lab" id="lab-stream" tabindex="0">
+    <div class="lab-head">
+      <div class="lab-title">Raw event stream (click here, then mash keys)</div>
+      <p class="lab-hint">Notice: repeats, no notion of “this frame,” no game code involved.</p>
+    </div>
+    <div class="event-log" data-log="stream"></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="states">
+  <h2><span class="num">02</span> Three questions systems ask</h2>
+  <p>Almost every keyboard feature collapses to these three:</p>
+
+  <table class="cheat">
+    <thead>
+      <tr>
+        <th>Query</th>
+        <th>Means</th>
+        <th>Use for</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>isDown(code)</strong></td>
+        <td>Held right now</td>
+        <td>Continuous move, camera pan, charge</td>
+      </tr>
+      <tr>
+        <td><strong>wasPressed(code)</strong></td>
+        <td>Went down <em>this frame</em></td>
+        <td>Jump once, open menu, fire once</td>
+      </tr>
+      <tr>
+        <td><strong>wasReleased(code)</strong></td>
+        <td>Went up <em>this frame</em></td>
+        <td>Release charge, end drag</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note warn">
+    <strong>If you only store “isDown,”</strong> every system that wants a one-shot action
+    invents its own previous-frame bookkeeping — or worse, fires every tick while the key is held.
+  </div>
+
+  <p>
+    Your current stub already has the continuous case:
+  </p>
+  <pre class="code"><span class="k">export</span> <span class="k">interface</span> <span class="p">InputManager</span> {
+  <span class="p">isKeyDown</span>(key: <span class="k">string</span>): <span class="k">boolean</span>;
+}</pre>
+  <p>We’ll extend it with edge queries and a <code>beginFrame()</code> that the game loop calls once per tick.</p>
+</section>
+
+<!-- 3 -->
+<section id="demo-edges">
+  <h2><span class="num">03</span> Live: edge detection</h2>
+  <p>
+    Click the panel, hold keys, tap them. Watch how <em>pressed</em> and <em>released</em>
+    only light for a single simulated frame, while <em>down</em> stays lit.
+  </p>
+
+  <div class="lab" id="lab-edges" tabindex="0">
+    <div class="lab-head">
+      <div class="lab-title">Frame snapshot · WASD + Space + Shift</div>
+      <p class="lab-hint">Green = pressed this frame · Blue = held · Orange = released this frame</p>
+      <div class="keys" data-keys></div>
+      <div class="btn-row">
+        <button type="button" data-act="blur">Simulate tab blur (clear stuck keys)</button>
+        <button type="button" data-act="clear-log">Clear log</button>
+      </div>
+    </div>
+    <div class="event-log" data-log="edges"></div>
+    <div class="readout" data-readout="edges">Waiting for focus…</div>
+  </div>
+
+  <div class="note good">
+    <strong>Mental model:</strong> listeners only maintain “which keys are held.”
+    Once per frame you <em>diff</em> against last frame’s held set to derive pressed/released.
+    That way keys that arrived between RAF ticks still show up as edges.
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="contract">
+  <h2><span class="num">04</span> Design the contract (~8 min)</h2>
+  <p>
+    Keep the interface in the engine, implementation free to change later
+    (browser keyboard → +mouse → +gamepad). Prefer <code>event.code</code>
+    (<code>"KeyW"</code>) over <code>event.key</code> (<code>"w"</code> / <code>"W"</code> / layout-dependent).
+  </p>
+
+  <pre class="code"><span class="c">// src/engine/input/input-manager.ts</span>
+<span class="k">export</span> <span class="k">interface</span> <span class="p">InputManager</span> {
+  <span class="c">// continuous</span>
+  <span class="p">isDown</span>(code: <span class="k">string</span>): <span class="k">boolean</span>;
+
+  <span class="c">// edges — true for exactly one frame after beginFrame()</span>
+  <span class="p">wasPressed</span>(code: <span class="k">string</span>): <span class="k">boolean</span>;
+  <span class="p">wasReleased</span>(code: <span class="k">string</span>): <span class="k">boolean</span>;
+
+  <span class="c">// call once at the start of each logic tick (before systems)</span>
+  <span class="p">beginFrame</span>(): <span class="k">void</span>;
+
+  <span class="c">// lifecycle</span>
+  <span class="p">attach</span>(target?: <span class="p">Window</span> | <span class="p">HTMLElement</span>): <span class="k">void</span>;
+  <span class="p">detach</span>(): <span class="k">void</span>;
+}</pre>
+
+  <div class="note">
+    <strong>Naming:</strong> rename <code>isKeyDown</code> → <code>isDown</code> now while it’s still a stub.
+    Later you can add <code>isDown("Jump")</code> via an action map without systems caring about
+    <code>KeySpace</code> vs gamepad South.
+  </div>
+
+  <h3>What stays out of the interface</h3>
+  <ul>
+    <li>Entity IDs, camera, world — those belong in systems</li>
+    <li>Keybinding UI / persistence — later layer on top</li>
+    <li>“Player jumped” — that’s gameplay, not input</li>
+  </ul>
+</section>
+
+<!-- 5 -->
+<section id="implement">
+  <h2><span class="num">05</span> Implement keyboard state (~15 min)</h2>
+  <p>Create <code>src/engine/input/browser-keyboard-input.ts</code> (name is flexible). Core idea:</p>
+
+  <pre class="code"><span class="k">export</span> <span class="k">class</span> <span class="p">BrowserKeyboardInput</span> <span class="k">implements</span> <span class="p">InputManager</span> {
+  <span class="k">#down</span> = <span class="k">new</span> <span class="p">Set</span>&lt;<span class="k">string</span>&gt;();      <span class="c">// live, mutated by DOM events</span>
+  <span class="k">#prevDown</span> = <span class="k">new</span> <span class="p">Set</span>&lt;<span class="k">string</span>&gt;();  <span class="c">// snapshot from last beginFrame</span>
+  <span class="k">#pressed</span> = <span class="k">new</span> <span class="p">Set</span>&lt;<span class="k">string</span>&gt;();
+  <span class="k">#released</span> = <span class="k">new</span> <span class="p">Set</span>&lt;<span class="k">string</span>&gt;();
+  <span class="k">#target</span>: <span class="p">Window</span> | <span class="p">HTMLElement</span> | <span class="k">null</span> = <span class="k">null</span>;
+
+  <span class="p">beginFrame</span>() {
+    <span class="k">this</span>.#pressed.clear();
+    <span class="k">this</span>.#released.clear();
+
+    <span class="k">for</span> (<span class="k">const</span> code <span class="k">of</span> <span class="k">this</span>.#down) {
+      <span class="k">if</span> (!<span class="k">this</span>.#prevDown.has(code)) <span class="k">this</span>.#pressed.add(code);
+    }
+    <span class="k">for</span> (<span class="k">const</span> code <span class="k">of</span> <span class="k">this</span>.#prevDown) {
+      <span class="k">if</span> (!<span class="k">this</span>.#down.has(code)) <span class="k">this</span>.#released.add(code);
+    }
+
+    <span class="k">this</span>.#prevDown = <span class="k">new</span> <span class="p">Set</span>(<span class="k">this</span>.#down);
+  }
+
+  <span class="p">isDown</span>(code: <span class="k">string</span>) { <span class="k">return</span> <span class="k">this</span>.#down.has(code); }
+  <span class="p">wasPressed</span>(code: <span class="k">string</span>) { <span class="k">return</span> <span class="k">this</span>.#pressed.has(code); }
+  <span class="p">wasReleased</span>(code: <span class="k">string</span>) { <span class="k">return</span> <span class="k">this</span>.#released.has(code); }
+
+  <span class="p">attach</span>(target: <span class="p">Window</span> | <span class="p">HTMLElement</span> = window) {
+    <span class="k">this</span>.detach();
+    <span class="k">this</span>.#target = target;
+    target.addEventListener(<span class="s">"keydown"</span>, <span class="k">this</span>.#onDown);
+    target.addEventListener(<span class="s">"keyup"</span>, <span class="k">this</span>.#onUp);
+    window.addEventListener(<span class="s">"blur"</span>, <span class="k">this</span>.#onBlur);
+  }
+
+  <span class="p">detach</span>() { <span class="c">/* remove the same listeners; clear sets */</span> }
+
+  <span class="k">#onDown</span> = (e: <span class="p">KeyboardEvent</span>) => {
+    <span class="k">if</span> (e.repeat) <span class="k">return</span>; <span class="c">// OS key-repeat ≠ new physical press</span>
+    <span class="k">this</span>.#down.add(e.code);
+  };
+
+  <span class="k">#onUp</span> = (e: <span class="p">KeyboardEvent</span>) => {
+    <span class="k">this</span>.#down.delete(e.code);
+  };
+
+  <span class="k">#onBlur</span> = () => {
+    <span class="k">this</span>.#down.clear(); <span class="c">// next beginFrame will emit releases vs #prevDown</span>
+  };
+}</pre>
+
+  <div class="note warn">
+    <strong>Why diff, not “push into pressed on keydown”?</strong>
+    DOM events arrive <em>between</em> frames. If you clear a pressed-set at the start of the
+    tick, you can wipe a key that fired during the last idle interval. Diffing
+    <code>#down</code> vs <code>#prevDown</code> inside <code>beginFrame()</code> is the boring, correct fix.
+  </div>
+
+  <h3>Frame timing diagram</h3>
+  <pre class="code"><span class="c">#loop(timestamp)</span>
+  deltaTime = …
+  <span class="n">input.beginFrame()</span>          <span class="c">← diff down vs prev → pressed/released</span>
+  for system in logic: system.update(ctx)  <span class="c">← queries input</span>
+  draw()
+  requestAnimationFrame(#loop)
+  <span class="c">// … DOM keydown/keyup may mutate #down anytime in between …</span></pre>
+</section>
+
+<!-- 6 -->
+<section id="wire">
+  <h2><span class="num">06</span> Wire into Areo’s loop (~10 min)</h2>
+  <p>
+    Your <code>LogicContext</code> already carries <code>deltaTime</code>, <code>world</code>, and <code>camera</code>.
+    Add <code>input</code> the same way — systems stay pure consumers.
+  </p>
+
+  <pre class="code"><span class="c">// components.ts</span>
+<span class="k">export</span> <span class="k">interface</span> <span class="p">LogicContext</span> {
+  deltaTime: <span class="k">number</span>;
+  world: <span class="p">GameWorld</span>&lt;<span class="k">string</span>&gt;;
+  camera: <span class="p">Camera</span>;
+  input: <span class="p">InputManager</span>;  <span class="c">// ← add</span>
+}</pre>
+
+  <pre class="code"><span class="c">// game-manager.ts (sketch)</span>
+<span class="k">#input</span> = <span class="k">new</span> <span class="p">BrowserKeyboardInput</span>();
+
+constructor(config) {
+  …
+  <span class="k">this</span>.#input.attach(window); <span class="c">// or the canvas</span>
+  <span class="k">this</span>.#logicContext = {
+    deltaTime: <span class="n">0</span>,
+    camera: <span class="k">this</span>.#camera,
+    world: <span class="k">this</span>.#world,
+    input: <span class="k">this</span>.#input,
+  };
+}
+
+<span class="k">#update</span>(deltaTime: <span class="k">number</span>) {
+  <span class="k">this</span>.#input.beginFrame();
+  <span class="k">this</span>.#logicContext.deltaTime = deltaTime;
+  <span class="k">for</span> (<span class="k">const</span> logic <span class="k">of</span> <span class="k">this</span>.#logicComponents) {
+    logic.update(<span class="k">this</span>.#logicContext);
+  }
+}</pre>
+
+  <div class="note">
+    <strong>Attach target:</strong> <code>window</code> is simplest for a canvas game that always “owns” the page.
+    Attaching to the canvas only works if the canvas can receive focus (tabindex) — fine later, skip for v1.
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="use">
+  <h2><span class="num">07</span> Use it from a system (~10 min)</h2>
+  <p>
+    Start with something you can see immediately: camera pan or entity move.
+    Prefer reading <strong>axes</strong> from keys rather than nesting <code>if</code>s for every direction.
+  </p>
+
+  <pre class="code"><span class="c">// camera-system.ts or movement-system.ts</span>
+update({ input, camera, deltaTime }: <span class="p">LogicContext</span>) {
+  <span class="k">const</span> speed = <span class="n">8</span>; <span class="c">// world units / second — tune later</span>
+  <span class="k">let</span> x = <span class="n">0</span>, z = <span class="n">0</span>;
+  <span class="k">if</span> (input.isDown(<span class="s">"KeyW"</span>)) z -= <span class="n">1</span>;
+  <span class="k">if</span> (input.isDown(<span class="s">"KeyS"</span>)) z += <span class="n">1</span>;
+  <span class="k">if</span> (input.isDown(<span class="s">"KeyA"</span>)) x -= <span class="n">1</span>;
+  <span class="k">if</span> (input.isDown(<span class="s">"KeyD"</span>)) x += <span class="n">1</span>;
+
+  <span class="c">// optional: normalize diagonal so W+D isn’t √2 faster</span>
+  <span class="k">const</span> len = Math.hypot(x, z);
+  <span class="k">if</span> (len > <span class="n">0</span>) { x /= len; z /= len; }
+
+  <span class="k">const</span> dt = deltaTime / <span class="n">1000</span>; <span class="c">// your loop passes ms</span>
+  <span class="k">const</span> p = camera.position;
+  camera.setPosition({ x: p.x + x * speed * dt, y: p.y, z: p.z + z * speed * dt });
+
+  <span class="k">if</span> (input.wasPressed(<span class="s">"Space"</span>)) {
+    <span class="c">// one-shot: e.g. cycle mesh, toggle debug, jump impulse</span>
+  }
+}</pre>
+
+  <div class="lab" id="lab-play" tabindex="0">
+    <div class="lab-head">
+      <div class="lab-title">Sandbox · WASD moves the dot · Space pulses · click canvas first</div>
+      <p class="lab-hint">This is the same query API you’ll use in systems. Diagonal is normalized.</p>
+    </div>
+    <canvas class="plot" width="720" height="320" data-play></canvas>
+    <div class="readout" data-readout="play">Click canvas, then use WASD / Space</div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="gotchas">
+  <h2><span class="num">08</span> Browser gotchas (~5 min)</h2>
+  <ul>
+    <li>
+      <strong>Stuck keys after alt-tab:</strong> you often miss <code>keyup</code>.
+      Clear all downs on <code>window.blur</code> / <code>visibilitychange</code>.
+      Try the “Simulate tab blur” button in §03.
+    </li>
+    <li>
+      <strong><code>event.repeat</code>:</strong> browsers fire repeated keydowns while held.
+      Ignore them for <code>wasPressed</code> or you’ll get jump spam.
+    </li>
+    <li>
+      <strong><code>code</code> vs <code>key</code>:</strong> use <code>code</code> for physical keys
+      (<code>KeyW</code> stays top-left letter even on AZERTY). Use <code>key</code> only for text entry.
+    </li>
+    <li>
+      <strong><code>preventDefault</code>:</strong> optional for Space/arrows so the page doesn’t scroll.
+      Don’t blanket-prevent everything — you still want Cmd/Ctrl shortcuts in the browser while developing.
+    </li>
+    <li>
+      <strong>Don’t put listeners in systems.</strong> Two systems attaching keydown = double handling and tears at teardown.
+    </li>
+  </ul>
+
+  <div class="note bad">
+    <strong>Anti-pattern:</strong> <code>window.addEventListener("keydown", …)</code> inside
+    <code>MovementSystem.update</code>. That re-subscribes every frame or couples lifecycle to a system that may be disabled.
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="done">
+  <h2><span class="num">09</span> Done checklist</h2>
+  <p>You’re done with this lab when all of these are true:</p>
+  <ul class="checklist">
+    <li><code>InputManager</code> interface has <code>isDown</code>, <code>wasPressed</code>, <code>wasReleased</code>, <code>beginFrame</code>, <code>attach</code>/<code>detach</code></li>
+    <li><code>BrowserKeyboardInput</code> (or equivalent) implements it with Sets + blur clear</li>
+    <li><code>LogicContext</code> exposes <code>input</code></li>
+    <li><code>Game.#update</code> calls <code>input.beginFrame()</code> before systems</li>
+    <li>One system moves something visible with WASD using <code>isDown</code></li>
+    <li>One system uses <code>wasPressed</code> for a one-shot (Space is fine)</li>
+  </ul>
+
+  <div class="decide">
+    <h3>Default for Areo (ship this, not more)</h3>
+    <p>
+      Keyboard-only manager, physical <code>code</code> strings, no action map yet.
+      Action names (<code>"Move"</code>, <code>"Jump"</code>) are a 20-minute follow-up once
+      movement feels good — don’t block the first playable loop on rebinding.
+    </p>
+  </div>
+
+  <h3>Stretch (after the hour)</h3>
+  <ul>
+    <li><strong>Action map:</strong> <code>bind("Jump", "Space")</code> then <code>wasPressed("Jump")</code></li>
+    <li><strong>Mouse:</strong> follow <a href="mouse-input-lab.html" style="color:var(--accent2)">Mouse Input Lab</a> — position, <code>dx/dy</code>, wheel, buttons</li>
+    <li><strong>Pointer lock:</strong> for FPS look — only once mouse deltas work</li>
+  </ul>
+
+  <h3>Suggested file layout</h3>
+  <pre class="code">src/engine/input/
+  input-manager.ts          <span class="c">← interface (contract)</span>
+  browser-keyboard-input.ts <span class="c">← Web implementation</span>
+  <span class="c">// later: actions.ts, mouse-input.ts</span></pre>
+</section>
+
+<footer>
+  Open this file in a browser from
+  <a href="./input-manager-lab.html"><code>guides/labs/input-manager-lab.html</code></a>.
+  Pair with your stub at <code>src/engine/input/input-manager.ts</code> and the loop in
+  <code>src/engine/core/game-manager.ts</code>.
+</footer>
+
+</div>
+
+<script>
+(() => {
+  const TRACK = ["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft"];
+  const LABEL = { KeyW: "W", KeyA: "A", KeyS: "S", KeyD: "D", Space: "Space", ShiftLeft: "Shift" };
+
+  function logLine(el, html) {
+    if (!el) return;
+    const row = document.createElement("div");
+    row.innerHTML = html;
+    el.prepend(row);
+    while (el.children.length > 40) el.lastChild.remove();
+  }
+
+  // --- §01 raw stream ---
+  const streamLab = document.getElementById("lab-stream");
+  const streamLog = streamLab?.querySelector("[data-log='stream']");
+  if (streamLab && streamLog) {
+    logLine(streamLog, `<span class="warn">focus this panel, then press keys…</span>`);
+    const onKey = (type) => (e) => {
+      if (!streamLab.contains(document.activeElement) && document.activeElement !== streamLab) return;
+      e.preventDefault();
+      const rep = e.repeat ? " repeat" : "";
+      logLine(
+        streamLog,
+        `<span class="${type === "keydown" ? "dn" : "up"}">${type}</span> code=<em>${e.code}</em> key=${JSON.stringify(e.key)}${rep}`
+      );
+    };
+    streamLab.addEventListener("keydown", onKey("keydown"));
+    streamLab.addEventListener("keyup", onKey("keyup"));
+  }
+
+  // --- tiny input manager used by demos ---
+  class MiniInput {
+    constructor() {
+      this.down = new Set();
+      this.prevDown = new Set();
+      this.pressed = new Set();
+      this.released = new Set();
+    }
+    beginFrame() {
+      this.pressed.clear();
+      this.released.clear();
+      for (const code of this.down) {
+        if (!this.prevDown.has(code)) this.pressed.add(code);
+      }
+      for (const code of this.prevDown) {
+        if (!this.down.has(code)) this.released.add(code);
+      }
+      this.prevDown = new Set(this.down);
+    }
+    onDown(code, repeat) {
+      if (repeat) return;
+      this.down.add(code);
+    }
+    onUp(code) {
+      this.down.delete(code);
+    }
+    blur() {
+      this.down.clear();
+    }
+    isDown(c) { return this.down.has(c); }
+    wasPressed(c) { return this.pressed.has(c); }
+    wasReleased(c) { return this.released.has(c); }
+  }
+
+  // --- §03 edges ---
+  const edgesLab = document.getElementById("lab-edges");
+  if (edgesLab) {
+    const keysEl = edgesLab.querySelector("[data-keys]");
+    const logEl = edgesLab.querySelector("[data-log='edges']");
+    const readout = edgesLab.querySelector("[data-readout='edges']");
+    const input = new MiniInput();
+    const keyNodes = new Map();
+
+    for (const code of TRACK) {
+      const el = document.createElement("div");
+      el.className = "key";
+      el.textContent = LABEL[code];
+      el.dataset.code = code;
+      keysEl.appendChild(el);
+      keyNodes.set(code, el);
+    }
+
+    const focused = () =>
+      edgesLab.contains(document.activeElement) || document.activeElement === edgesLab;
+
+    edgesLab.addEventListener("keydown", (e) => {
+      if (!focused()) return;
+      if (!TRACK.includes(e.code)) return;
+      e.preventDefault();
+      input.onDown(e.code, e.repeat);
+    });
+    edgesLab.addEventListener("keyup", (e) => {
+      if (!TRACK.includes(e.code)) return;
+      input.onUp(e.code);
+    });
+    edgesLab.querySelector("[data-act='blur']")?.addEventListener("click", () => {
+      input.blur();
+      logLine(logEl, `<span class="warn">blur → cleared all key state</span>`);
+    });
+    edgesLab.querySelector("[data-act='clear-log']")?.addEventListener("click", () => {
+      logEl.innerHTML = "";
+    });
+
+    let frame = 0;
+    const tick = () => {
+      // Same order as Game.#update: beginFrame, then systems/query UI
+      input.beginFrame();
+
+      const pressed = TRACK.filter((c) => input.wasPressed(c));
+      const released = TRACK.filter((c) => input.wasReleased(c));
+      const held = TRACK.filter((c) => input.isDown(c));
+
+      for (const [code, el] of keyNodes) {
+        el.classList.remove("down", "pressed", "released");
+        if (input.wasPressed(code)) el.classList.add("pressed");
+        else if (input.wasReleased(code)) el.classList.add("released");
+        else if (input.isDown(code)) el.classList.add("down");
+      }
+
+      if (pressed.length || released.length) {
+        frame++;
+        logLine(
+          logEl,
+          `<span class="fr">frame ${frame}</span> ` +
+            (pressed.length ? `pressed=[${pressed.map((c) => LABEL[c]).join(",")}] ` : "") +
+            (released.length ? `released=[${released.map((c) => LABEL[c]).join(",")}]` : "")
+        );
+      }
+
+      readout.innerHTML = focused()
+        ? `held: <em>${held.map((c) => LABEL[c]).join(" ") || "—"}</em>`
+        : `Click this panel to focus · held: <em>${held.map((c) => LABEL[c]).join(" ") || "—"}</em>`;
+
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // --- §07 playground ---
+  const playLab = document.getElementById("lab-play");
+  const canvas = playLab?.querySelector("[data-play]");
+  const playReadout = playLab?.querySelector("[data-readout='play']");
+  if (playLab && canvas && playReadout) {
+    const ctx = canvas.getContext("2d");
+    const input = new MiniInput();
+    const pos = { x: canvas.width / 2, y: canvas.height / 2 };
+    let pulse = 0;
+    let last = performance.now();
+
+    canvas.setAttribute("tabindex", "0");
+    canvas.addEventListener("click", () => canvas.focus());
+
+    canvas.addEventListener("keydown", (e) => {
+      if (![...TRACK, "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) return;
+      e.preventDefault();
+      input.onDown(e.code, e.repeat);
+    });
+    canvas.addEventListener("keyup", (e) => {
+      input.onUp(e.code);
+    });
+    window.addEventListener("blur", () => input.blur());
+
+    const loop = (now) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      // Same order as Game.#update
+      input.beginFrame();
+
+      let x = 0, y = 0;
+      if (input.isDown("KeyW") || input.isDown("ArrowUp")) y -= 1;
+      if (input.isDown("KeyS") || input.isDown("ArrowDown")) y += 1;
+      if (input.isDown("KeyA") || input.isDown("ArrowLeft")) x -= 1;
+      if (input.isDown("KeyD") || input.isDown("ArrowRight")) x += 1;
+      const len = Math.hypot(x, y);
+      if (len > 0) { x /= len; y /= len; }
+
+      const speed = 220;
+      pos.x = Math.max(16, Math.min(canvas.width - 16, pos.x + x * speed * dt));
+      pos.y = Math.max(16, Math.min(canvas.height - 16, pos.y + y * speed * dt));
+
+      if (input.wasPressed("Space")) pulse = 1;
+
+      pulse = Math.max(0, pulse - dt * 2.2);
+
+      // draw
+      ctx.fillStyle = "#0b0e13";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#2b3342";
+      ctx.lineWidth = 1;
+      for (let gx = 0; gx < canvas.width; gx += 40) {
+        ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, canvas.height); ctx.stroke();
+      }
+      for (let gy = 0; gy < canvas.height; gy += 40) {
+        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(canvas.width, gy); ctx.stroke();
+      }
+
+      const r = 12 + pulse * 18;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = pulse > 0 ? "#7dcca0" : "#8eb4e8";
+      ctx.fill();
+      ctx.strokeStyle = "#e8ecf3";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      const held = ["W", "A", "S", "D", "Space"].filter((_, i) =>
+        input.isDown(["KeyW", "KeyA", "KeyS", "KeyD", "Space"][i])
+      );
+      playReadout.innerHTML =
+        document.activeElement === canvas
+          ? `pos <em>${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}</em> · held <em>${held.join(" ") || "—"}</em> · dt <em>${(dt * 1000).toFixed(1)}ms</em>`
+          : `Click canvas to focus · then WASD / Space`;
+
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>

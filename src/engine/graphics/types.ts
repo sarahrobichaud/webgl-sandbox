@@ -1,3 +1,4 @@
+import type { Camera } from "../contracts/camera.contract";
 import type { Position, Transform3D } from "../core/primitives";
 import type { Mesh } from "./webgl/webgl-lib/areo-types";
 
@@ -11,6 +12,7 @@ export interface Renderer3D {
   clear(): void;
   render(mesh: Mesh, position: Position, transform: Transform3D): void;
   init(meshes: Mesh[]): void;
+  setCamera(camera: Camera): void;
   setup(program: "basic"): void;
   renderGrid(): void;
 }

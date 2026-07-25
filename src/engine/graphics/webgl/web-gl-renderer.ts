@@ -7,6 +7,7 @@ import type { AreoProgram, LoadedMesh, Mesh } from "./webgl-lib/areo-types";
 import type { Renderer3D, Viewport } from "../types";
 import { gridShaders } from "./shaders/grid-shader";
 import { MESHES } from "../shapes/mesh";
+import type { Camera } from "../../contracts/camera.contract";
 
 export class WebGlRenderer implements Renderer3D {
   #viewport: Viewport = { size: { height: 0, width: 0 } };
@@ -17,12 +18,11 @@ export class WebGlRenderer implements Renderer3D {
   #aero: AreoGL;
 
   #gridMesh = MESHES.plane;
+  #camera: Camera | null = null;
 
-  constructor(parentElement: HTMLElement) {
-    const { canvas } = this.#bootstrap(parentElement);
-
-    this.#gl = canvas.getContext("webgl2")!;
-    this.#canvas = canvas;
+  constructor(parentElement: HTMLCanvasElement) {
+    this.#gl = parentElement.getContext("webgl2")!;
+    this.#canvas = parentElement;
     this.#aero = new AreoGL(this.#gl);
 
     this.#programs.basic = this.#aero.createProgram("basic", shaders);
@@ -36,6 +36,14 @@ export class WebGlRenderer implements Renderer3D {
 
     const observer = new ResizeObserver(resizeCallback);
     this.#watchResize(observer);
+  }
+
+  setCamera(camera: Camera) {
+    this.#camera = camera;
+  }
+
+  get hasCamera() {
+    return this.#camera !== null;
   }
 
   get viewport() {
@@ -117,38 +125,6 @@ export class WebGlRenderer implements Renderer3D {
     this.#gl.drawArrays(this.#gl.TRIANGLES, 0, mesh.vertices.length / 3);
   }
 
-  #computeViewProjection(mode: "ortho" | "perspective" = "ortho") {
-    const depth = 1000;
-    const aspect = this.#canvas.clientWidth / this.#canvas.clientHeight;
-
-    // Ortho: parallel rays — good for tile alignment, hard for depth/orientation cues.
-    // Perspective: foreshortening — easier to read which way things face in 3D.
-    let projection: mat4;
-    if (mode === "perspective") {
-      const fov = (120 * Math.PI) / 180;
-      projection = mat4.perspective(mat4.create(), fov, aspect, 0.1, depth);
-    } else {
-      const tilesAcross = 30;
-      const halfW = tilesAcross / 2;
-      const halfH = halfW / aspect;
-      // Symmetric near/far so the camera can sit at the origin in ortho.
-      projection = mat4.ortho(mat4.create(), -halfW, halfW, -halfH, halfH, -depth, depth);
-    }
-
-    const camera = mat4.create();
-    mat4.rotateX(camera, camera, (-85 * Math.PI) / 180);
-    mat4.rotateY(camera, camera, (20 * Math.PI) / 180);
-    mat4.rotateZ(camera, camera, (85 * Math.PI) / 180);
-    // Perspective needs distance from the subject; ortho does not.
-    const cameraZ = mode === "perspective" ? 10 : 0;
-    mat4.translate(camera, camera, vec3.fromValues(0, 0, cameraZ));
-
-    const view = mat4.invert(mat4.create(), camera)!;
-    const viewProjection = mat4.multiply(mat4.create(), projection, view);
-
-    return viewProjection;
-  }
-
   #computeWorldTransforms(
     position: Position,
     transform: Transform3D,
@@ -182,8 +158,12 @@ export class WebGlRenderer implements Renderer3D {
       number, number, number,
     ],
   ) {
+    if (this.#camera === null) {
+      throw new Error("No camera");
+    }
+
     // Flip to "perspective" when debugging orientations; keep "ortho" for tile work.
-    const viewProjection = this.#computeViewProjection("ortho");
+    const viewProjection = this.#camera.getViewPerspective();
     const worldTransforms = this.#computeWorldTransforms(position, transform, origin);
 
     const worldViewProjection = mat4.multiply(mat4.create(), viewProjection, worldTransforms);
@@ -201,16 +181,6 @@ export class WebGlRenderer implements Renderer3D {
       worldViewProjection,
       transposedInvertedWorldTransforms,
     };
-  }
-
-  #bootstrap(element: HTMLElement) {
-    const canvas = document.createElement("canvas");
-
-    canvas.id = "game-view";
-
-    element.appendChild(canvas);
-
-    return { canvas };
   }
 
   #watchResize(observer: ResizeObserver) {

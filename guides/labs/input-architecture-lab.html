@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Input Architecture Lab — devices, orchestration, bindings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #12161d;
+    --bg-elev: #1a202a;
+    --bg-plot: #0b0e13;
+    --ink: #e8ecf3;
+    --muted: #95a0b4;
+    --faint: #3c4658;
+    --line: #2b3342;
+    --accent: #7dcca0;
+    --accent2: #8eb4e8;
+    --warm: #e8a45c;
+    --warn: #e0b85c;
+    --bad: #e07a7a;
+    --radius: 10px;
+    --pad: clamp(1rem, 3vw, 2rem);
+    --max: 48rem;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 5% 0%, #1a2a22 0%, transparent 55%),
+      radial-gradient(ellipse 50% 35% at 100% 8%, #1a2438 0%, transparent 45%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 1.06rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: var(--pad); padding-bottom: 5rem; }
+
+  header.hero {
+    padding: 2rem 0 1.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.55rem;
+  }
+  h1 {
+    font-family: Syne, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.85rem, 5vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.8rem;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 40rem; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .meta {
+    margin-top: 1.1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+  }
+  .pill em { color: var(--accent); font-style: normal; }
+
+  .path {
+    margin-top: 1.4rem;
+    display: grid;
+    gap: 0.45rem;
+  }
+  .path a {
+    display: block;
+    text-decoration: none;
+    color: var(--ink);
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+  }
+  .path a span {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.15rem;
+  }
+  .path a.now { border-color: var(--accent); }
+  .path a.later { opacity: 0.7; }
+
+  nav.toc {
+    margin: 1.6rem 0 0;
+    display: grid;
+    gap: 0.28rem;
+  }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    border-left: 2px solid var(--faint);
+    padding: 0.12rem 0 0.12rem 0.65rem;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+
+  section { margin: 2.85rem 0; scroll-margin-top: 1.2rem; }
+  h2 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.55rem;
+  }
+  h3 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 1.35rem 0 0.4rem;
+  }
+  .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--accent);
+    margin-right: 0.35rem;
+  }
+  p { color: var(--muted); margin: 0 0 0.85rem; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.84em;
+    background: #0a0c10;
+    padding: 0.08em 0.32em;
+    border-radius: 4px;
+    color: #c5d0e0;
+  }
+  ul, ol { color: var(--muted); padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+
+  .note {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 0.95rem;
+    margin: 1rem 0 1.15rem;
+    color: var(--muted);
+    font-size: 0.96rem;
+  }
+  .note.warn { border-left-color: var(--warn); }
+  .note.bad { border-left-color: var(--bad); }
+  .note.good { border-left-color: var(--accent); }
+  .note strong { color: var(--ink); }
+
+  .lab {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1.05rem 0;
+  }
+  .lab-head {
+    padding: 0.7rem 0.95rem;
+    border-bottom: 1px solid var(--line);
+    background: rgba(0,0,0,0.22);
+  }
+  .lab-title {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+  }
+  .lab-hint {
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin: 0;
+  }
+  .lab-body { padding: 0.85rem 0.95rem; }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+    margin: 0.85rem 0;
+  }
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.55rem;
+    margin: 0.85rem 0;
+  }
+  @media (max-width: 720px) {
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+  }
+  .space-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.75rem 0.9rem;
+  }
+  .space-card h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    margin: 0 0 0.3rem;
+    color: var(--warm);
+  }
+  .space-card p { margin: 0; font-size: 0.92rem; }
+  .space-card.layer-device h3 { color: var(--accent2); }
+  .space-card.layer-orch h3 { color: var(--accent); }
+  .space-card.layer-eng h3 { color: var(--warm); }
+  .space-card.layer-game h3 { color: #c9a0e8; }
+  .space-card.layer-bind h3 { color: var(--warn); }
+
+  pre.code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    background: #0a0c10;
+    color: #b8c4d4;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.85rem 0.95rem;
+    overflow-x: auto;
+    margin: 0.9rem 0 1.1rem;
+  }
+  pre.code .c { color: #5c667a; }
+  pre.code .k { color: var(--accent2); }
+  pre.code .s { color: var(--accent); }
+  pre.code .n { color: var(--warm); }
+  pre.code .p { color: #c5d0e0; }
+
+  table.cheat {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 1rem 0;
+  }
+  table.cheat th, table.cheat td {
+    border: 1px solid var(--line);
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    color: var(--muted);
+  }
+  table.cheat th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: var(--bg-elev);
+  }
+  table.cheat td strong { color: var(--ink); }
+
+  .stack {
+    display: grid;
+    gap: 0.4rem;
+    margin: 1rem 0;
+  }
+  .stack-layer {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-elev);
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .stack-layer:hover, .stack-layer.active {
+    border-color: var(--accent);
+    background: #15241c;
+  }
+  .stack-layer .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+  .stack-layer[data-layer="device"] .tag { color: var(--accent2); }
+  .stack-layer[data-layer="orch"] .tag { color: var(--accent); }
+  .stack-layer[data-layer="engine"] .tag { color: var(--warm); }
+  .stack-layer[data-layer="game"] .tag { color: #c9a0e8; }
+  .stack-layer[data-layer="bind"] .tag { color: var(--warn); }
+  .stack-layer .name {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 0 0 0.25rem;
+  }
+  .stack-layer .blurb {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+  .stack-detail {
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    background: var(--bg-plot);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    display: none;
+  }
+  .stack-detail.show { display: block; }
+  .stack-detail strong { color: var(--ink); }
+  .stack-detail ul { margin: 0.4rem 0 0; }
+
+  .flow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    line-height: 1.7;
+    background: var(--bg-plot);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.85rem 0.95rem;
+    color: var(--muted);
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+  .flow .arrow { color: var(--faint); }
+  .flow .hi { color: var(--accent); }
+  .flow .hi2 { color: var(--accent2); }
+  .flow .hi3 { color: var(--warm); }
+
+  .pipe {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.35rem 0.75rem;
+    align-items: center;
+    margin: 0.85rem 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+  }
+  .pipe .lbl {
+    color: var(--faint);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .pipe .bar {
+    height: 1.6rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.55rem;
+    color: var(--ink);
+    font-size: 0.72rem;
+  }
+  .pipe .bar.device { background: #1a2a3a; border: 1px solid #2a4060; color: var(--accent2); }
+  .pipe .bar.orch { background: #15241c; border: 1px solid #2a4a38; color: var(--accent); }
+  .pipe .bar.engine { background: #2a2218; border: 1px solid #4a3a28; color: var(--warm); }
+  .pipe .bar.game { background: #241830; border: 1px solid #3a2850; color: #c9a0e8; }
+  .pipe .bar.bind { background: #2a2818; border: 1px solid #4a4828; color: var(--warn); }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+  .btn-row button, .bind-ui button {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.32rem 0.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .btn-row button:hover, .bind-ui button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-row button.active, .bind-ui button.listening {
+    border-color: var(--warm);
+    color: var(--warm);
+    background: #2a2218;
+  }
+
+  .bind-ui {
+    display: grid;
+    gap: 0.45rem;
+  }
+  .bind-row {
+    display: grid;
+    grid-template-columns: 7rem 1fr auto;
+    gap: 0.45rem;
+    align-items: center;
+  }
+  @media (max-width: 520px) {
+    .bind-row { grid-template-columns: 1fr; }
+  }
+  .bind-row .action {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--accent);
+  }
+  .bind-row .codes {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+    background: var(--bg-plot);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.35rem 0.55rem;
+  }
+  .bind-row .codes em { color: var(--warm); font-style: normal; }
+
+  canvas.plot {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--bg-plot);
+    cursor: crosshair;
+    touch-action: none;
+  }
+  canvas.plot:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .readout {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+    padding: 0.55rem 0.95rem;
+    border-top: 1px solid var(--line);
+    line-height: 1.55;
+  }
+  .readout em { color: var(--accent); font-style: normal; }
+
+  .event-log {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    line-height: 1.55;
+    color: var(--muted);
+    background: var(--bg-plot);
+    border-top: 1px solid var(--line);
+    max-height: 8.5rem;
+    overflow: auto;
+    padding: 0.55rem 0.95rem;
+  }
+  .event-log .dn { color: var(--accent); }
+  .event-log .act { color: var(--warm); }
+  .event-log .fr { color: var(--accent2); }
+
+  .decide {
+    background: #15241c;
+    border: 1px solid #2a4a38;
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1.2rem 0;
+  }
+  .decide h3 {
+    font-family: Syne, sans-serif;
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    color: var(--accent);
+  }
+  .decide p { margin: 0 0 0.5rem; }
+  .decide p:last-child { margin: 0; }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0.8rem 0;
+  }
+  .checklist li {
+    position: relative;
+    padding: 0.45rem 0.45rem 0.45rem 1.85rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-elev);
+    margin-bottom: 0.4rem;
+    color: var(--muted);
+  }
+  .checklist li::before {
+    content: "☐";
+    position: absolute;
+    left: 0.65rem;
+    top: 0.45rem;
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--accent);
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  footer a { color: var(--warm); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Game systems · conceptual · ~30–40 min</p>
+  <h1>Input Architecture Lab</h1>
+  <p class="lede">
+    Input isn’t one class — it’s a <strong>pipeline of responsibilities</strong>.
+    This lab maps the stack: device drivers → frame orchestration → engine contracts →
+    game actions → binding maps. You’ll see where Areo sits today, and what each layer
+    is (and isn’t) allowed to know.
+  </p>
+
+  <div class="meta">
+    <span class="pill">Audience · <em>architecting, not coding yet</em></span>
+    <span class="pill">Pairs with · <em>keyboard + mouse labs</em></span>
+    <span class="pill">Goal · <em>know what belongs where</em></span>
+  </div>
+
+  <div class="path">
+    <a class="now" href="#stack">
+      <span>0 · You are here</span>
+      Input Architecture — the map
+    </a>
+    <a class="later" href="input-manager-lab.html">
+      <span>1 · Build next</span>
+      Input Manager Lab — keyboard edges
+    </a>
+    <a class="later" href="mouse-input-lab.html">
+      <span>2 · Then</span>
+      Mouse Input Lab — position, deltas, wheel
+    </a>
+  </div>
+
+  <nav class="toc">
+    <a href="#stack">1 · The five-layer stack</a>
+    <a href="#device">2 · Device level</a>
+    <a href="#orch">3 · Orchestration</a>
+    <a href="#engine">4 · Engine level</a>
+    <a href="#game">5 · Game / project level</a>
+    <a href="#bind">6 · Binding system</a>
+    <a href="#demo">7 · Live: actions vs keys</a>
+    <a href="#areo">8 · Where Areo is today</a>
+    <a href="#rules">9 · Ownership rules</a>
+    <a href="#done">10 · Checklist + next steps</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="stack">
+  <h2><span class="num">01</span> The five-layer stack</h2>
+  <p>
+    Think bottom-up: hardware noise becomes gameplay intent.
+    Click a layer to see what it owns.
+  </p>
+
+  <div class="stack" id="stack-explorer">
+    <div class="stack-layer" data-layer="device" tabindex="0">
+      <div class="tag">Layer 1 · hardware / OS / browser</div>
+      <div class="name">Device level</div>
+      <p class="blurb">Raw events: keydown, mousemove, gamepad poll. Physical codes, not “Jump.”</p>
+    </div>
+    <div class="stack-layer" data-layer="orch" tabindex="0">
+      <div class="tag">Layer 2 · frame boundary</div>
+      <div class="name">Orchestration</div>
+      <p class="blurb">Once per tick: snapshot, edge-detect, clear deltas. Speaks “this frame.”</p>
+    </div>
+    <div class="stack-layer" data-layer="engine" tabindex="0">
+      <div class="tag">Layer 3 · reusable engine API</div>
+      <div class="name">Engine level</div>
+      <p class="blurb">Contracts + implementations. Systems query <code>isDown</code> / <code>wasPressed</code>.</p>
+    </div>
+    <div class="stack-layer" data-layer="bind" tabindex="0">
+      <div class="tag">Layer 4 · remappable names</div>
+      <div class="name">Binding system</div>
+      <p class="blurb">Maps action ids → device codes. Settings, presets, multi-device OR.</p>
+    </div>
+    <div class="stack-layer" data-layer="game" tabindex="0">
+      <div class="tag">Layer 5 · your title</div>
+      <div class="name">Game / project level</div>
+      <p class="blurb">Systems react to actions: move camera, jump, open inventory. Never listen to DOM.</p>
+    </div>
+  </div>
+  <div class="stack-detail" id="stack-detail"></div>
+
+  <div class="flow">
+<span class="hi2">BrowserEvent</span>  <span class="arrow">→</span>  <span class="hi2">DeviceState</span>  <span class="arrow">→</span>  <span class="hi">beginFrame()</span>  <span class="arrow">→</span>  <span class="hi3">FrameSnapshot</span>
+     <span class="arrow">→</span>  <span class="hi3">Bindings.resolve()</span>  <span class="arrow">→</span>  <span class="hi">Action queries</span>  <span class="arrow">→</span>  Systems
+  </div>
+
+  <div class="note">
+    <strong>Why so many layers?</strong> So you can swap a device (keyboard → gamepad),
+    change a binding (Space → gamepad South), or rewrite a system — without rewriting the others.
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="device">
+  <h2><span class="num">02</span> Device level</h2>
+  <p>
+    A device adapter owns one hardware surface. Its job is narrow:
+    <strong>translate platform events into a live state bag</strong>.
+  </p>
+
+  <div class="grid2">
+    <div class="space-card layer-device">
+      <h3>Owns</h3>
+      <p>
+        Listeners / polling, physical identifiers (<code>KeyW</code>, mouse button 0),
+        held sets, position / axis buffers, blur / disconnect cleanup.
+      </p>
+    </div>
+    <div class="space-card layer-device">
+      <h3>Must not own</h3>
+      <p>
+        Action names, gameplay decisions, entity IDs, “player jumped,”
+        knowledge of other devices.
+      </p>
+    </div>
+  </div>
+
+  <table class="cheat">
+    <thead>
+      <tr>
+        <th>Device</th>
+        <th>State it accumulates</th>
+        <th>Platform source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Keyboard</strong></td>
+        <td>Which <code>KeyCode</code>s are held</td>
+        <td><code>keydown</code> / <code>keyup</code></td>
+      </tr>
+      <tr>
+        <td><strong>Mouse</strong></td>
+        <td>Buttons held, cursor xy, dx/dy, wheel</td>
+        <td><code>mousedown</code>, <code>mousemove</code>, <code>wheel</code></td>
+      </tr>
+      <tr>
+        <td><strong>Gamepad</strong></td>
+        <td>Buttons + axes (usually polled)</td>
+        <td><code>navigator.getGamepads()</code></td>
+      </tr>
+      <tr>
+        <td><strong>Touch</strong></td>
+        <td>Pointers / virtual sticks</td>
+        <td>Pointer / touch events</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <pre class="code"><span class="c">// Shape every digital device tends to share</span>
+<span class="k">interface</span> <span class="p">withButtonInputs</span>&lt;<span class="p">Code</span> <span class="k">extends</span> <span class="k">string</span> | <span class="k">number</span>&gt; {
+  <span class="p">isDown</span>(code: <span class="p">Code</span>): <span class="k">boolean</span>;
+  <span class="p">wasPressed</span>(code: <span class="p">Code</span>): <span class="k">boolean</span>;
+  <span class="p">wasReleased</span>(code: <span class="p">Code</span>): <span class="k">boolean</span>;
+}</pre>
+
+  <div class="note good">
+    <strong>Areo today:</strong>
+    <code>BrowserKeyboardInputs</code> and <code>BrowserMouseInputs</code> are device-level classes.
+    They speak <code>KeyCode</code> / <code>MouseButton</code>, not <code>"Jump"</code>.
+  </div>
+
+  <h3>Physical codes, not characters</h3>
+  <p>
+    Prefer <code>event.code</code> (<code>KeyW</code>) over <code>event.key</code> (<code>w</code>/<code>W</code>).
+    Bindings stay stable across keyboard layouts; text entry is a separate concern.
+  </p>
+</section>
+
+<!-- 3 -->
+<section id="orch">
+  <h2><span class="num">03</span> Orchestration</h2>
+  <p>
+    The game loop is the conductor. Devices mutate state <em>whenever</em> the OS fires;
+    systems must ask questions about <em>this frame</em>. Orchestration is the seam.
+  </p>
+
+  <div class="pipe">
+    <div class="lbl">between frames</div>
+    <div class="bar device">DOM / OS events mutate live device state</div>
+    <div class="lbl">tick start</div>
+    <div class="bar orch">beginFrame() → diff → pressed / released / consume deltas</div>
+    <div class="lbl">logic</div>
+    <div class="bar game">systems query stable snapshot</div>
+    <div class="lbl">draw</div>
+    <div class="bar engine">render (usually doesn’t re-read input)</div>
+  </div>
+
+  <pre class="code"><span class="c">// game-manager.ts — orchestration lives here, not in systems</span>
+<span class="k">#update</span>(deltaTime: <span class="k">number</span>) {
+  <span class="k">this</span>.#keyboardInputs.beginFrame();  <span class="c">// ← orchestration</span>
+  <span class="k">this</span>.#logicContext.deltaTime = deltaTime;
+  <span class="k">for</span> (<span class="k">const</span> logic <span class="k">of</span> <span class="k">this</span>.#logicComponents) {
+    logic.update(<span class="k">this</span>.#logicContext);  <span class="c">// ← consumers</span>
+  }
+}</pre>
+
+  <div class="grid2">
+    <div class="space-card layer-orch">
+      <h3>Orchestration does</h3>
+      <p>
+        Call <code>beginFrame()</code> on every device once, in a fixed order,
+        before any system runs. Own attach/detach lifecycle with the game.
+      </p>
+    </div>
+    <div class="space-card layer-orch">
+      <h3>Orchestration doesn’t</h3>
+      <p>
+        Interpret WASD as movement. Know what “Jump” means.
+        Subscribe to keydown inside a system’s <code>update</code>.
+      </p>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <strong>The classic bug:</strong> push into a <code>pressed</code> set on <code>keydown</code>,
+    then clear it at the start of the next frame. Events that arrive while the tab is idle
+    get wiped before systems see them. Diffing held vs previous-held inside
+    <code>beginFrame()</code> fixes that.
+  </div>
+
+  <h3>Who calls beginFrame?</h3>
+  <ul>
+    <li><strong>One place</strong> — the game loop (Areo: <code>Game.#update</code>)</li>
+    <li>If you later have keyboard + mouse + gamepad, either call each, or have a façade
+      <code>InputHub.beginFrame()</code> that fans out</li>
+    <li>Never let two systems each call <code>beginFrame</code> — edges would vanish mid-tick</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section id="engine">
+  <h2><span class="num">04</span> Engine level</h2>
+  <p>
+    Engine code is what you’d reuse in a different game.
+    It defines <strong>contracts</strong> (interfaces) and <strong>platform implementations</strong>,
+    then exposes them to systems via <code>LogicContext</code>.
+  </p>
+
+  <div class="grid3">
+    <div class="space-card layer-eng">
+      <h3>Contracts</h3>
+      <p><code>input-manager.contract.ts</code>, <code>key-codes.contract.ts</code> — stable types, no DOM.</p>
+    </div>
+    <div class="space-card layer-eng">
+      <h3>Implementations</h3>
+      <p><code>browser-keyboard-inputs.ts</code>, mouse, later gamepad — swappable.</p>
+    </div>
+    <div class="space-card layer-eng">
+      <h3>Context</h3>
+      <p><code>LogicContext.input</code> (or <code>.keyboard</code>) — systems depend on the contract only.</p>
+    </div>
+  </div>
+
+  <pre class="code"><span class="c">// Engine boundary: reusable, game-agnostic</span>
+<span class="k">export</span> <span class="k">interface</span> <span class="p">InputManager</span> {
+  <span class="p">isDown</span>(code: <span class="p">KeyCode</span>): <span class="k">boolean</span>;
+  <span class="p">wasPressed</span>(code: <span class="p">KeyCode</span>): <span class="k">boolean</span>;
+  <span class="p">wasReleased</span>(code: <span class="p">KeyCode</span>): <span class="k">boolean</span>;
+  <span class="p">beginFrame</span>(): <span class="k">void</span>;
+  <span class="p">attach</span>(target?: <span class="p">Window</span> | <span class="p">HTMLElement</span>): <span class="k">void</span>;
+  <span class="p">detach</span>(): <span class="k">void</span>;
+}</pre>
+
+  <div class="note">
+    <strong>Engine vs game smell test:</strong> if the name only makes sense in <em>your</em> title
+    (<code>"OpenInventory"</code>, <code>"CastFireball"</code>), it doesn’t belong in the engine contract.
+    Physical codes and generic queries do.
+  </div>
+
+  <h3>What “engine level” looks like as it grows</h3>
+  <pre class="code">src/engine/
+  contracts/
+    input-manager.contract.ts   <span class="c">← interfaces</span>
+    key-codes.contract.ts       <span class="c">← KeyCode / MouseButton enums</span>
+  input/
+    browser-keyboard-inputs.ts  <span class="c">← device impl</span>
+    browser-mouse-inputs.ts
+    input-hub.ts                <span class="c">← optional façade (later)</span>
+  components/
+    components.ts               <span class="c">← LogicContext carries input</span></pre>
+</section>
+
+<!-- 5 -->
+<section id="game">
+  <h2><span class="num">05</span> Game / project level</h2>
+  <p>
+    Game code is Areo-specific (or title-specific): systems, entities, rules.
+    Systems should ask <strong>intent</strong>, not parse hardware — even if today that intent
+    is still spelled <code>KeyW</code> until you add bindings.
+  </p>
+
+  <div class="grid2">
+    <div class="space-card layer-game">
+      <h3>Good (game)</h3>
+      <p>
+        <code>CameraSystem</code> pans when move-forward is active.
+        <code>MeshSwitchSystem</code> cycles on a one-shot.
+        Speed, who moves, and what happens live here.
+      </p>
+    </div>
+    <div class="space-card layer-game">
+      <h3>Bad (leaks)</h3>
+      <p>
+        <code>addEventListener</code> inside <code>update</code>.
+        Hard-coding layout-specific characters.
+        Clearing key state from a system.
+      </p>
+    </div>
+  </div>
+
+  <pre class="code"><span class="c">// Today (device codes in a system — ok for v1)</span>
+<span class="k">if</span> (input.isDown(<span class="p">KeyCode</span>.KeyW)) position.x += speed;
+
+<span class="c">// Target (action names — after bindings)</span>
+<span class="k">if</span> (actions.isDown(<span class="s">"MoveForward"</span>)) position.x += speed;
+<span class="k">if</span> (actions.wasPressed(<span class="s">"Jump"</span>)) applyImpulse();</pre>
+
+  <div class="note good">
+    <strong>Progression, not perfection:</strong> shipping WASD via <code>KeyCode</code> in a system
+    is fine. The architecture rule is: don’t let the system own listeners or frame edges.
+    Bindings are the next peel of the onion.
+  </div>
+
+  <h3>Contexts of control</h3>
+  <p>
+    Games often need more than one “who is listening” mode —
+    gameplay, UI menu, text chat, cutscene. That’s still game-level policy:
+    an input context stack that enables/disables action sets. The engine
+    supplies the raw/action queries; the game decides which set is active.
+  </p>
+</section>
+
+<!-- 6 -->
+<section id="bind">
+  <h2><span class="num">06</span> Binding system</h2>
+  <p>
+    Bindings sit between engine snapshots and game systems.
+    They answer: <em>“Which device codes currently mean Jump?”</em>
+  </p>
+
+  <div class="pipe">
+    <div class="lbl">engine</div>
+    <div class="bar engine">isDown(KeySpace) · isDown(GamepadSouth)</div>
+    <div class="lbl">bindings</div>
+    <div class="bar bind">Jump → [Space, GamepadSouth]</div>
+    <div class="lbl">game</div>
+    <div class="bar game">wasPressed("Jump")</div>
+  </div>
+
+  <h3>Core ideas</h3>
+  <ul>
+    <li><strong>Action id</strong> — stable string or enum: <code>"Jump"</code>, <code>"MoveX"</code></li>
+    <li><strong>Binding</strong> — one or more device sources OR’d together</li>
+    <li><strong>Digital</strong> — buttons/keys → down / pressed / released</li>
+    <li><strong>Analog</strong> — axes / sticks → float in [-1, 1] (optional composite from WASD)</li>
+    <li><strong>Rebind</strong> — listen for next press, write into the map, persist</li>
+  </ul>
+
+  <pre class="code"><span class="k">type</span> <span class="p">ActionId</span> = <span class="s">"MoveForward"</span> | <span class="s">"MoveBack"</span> | <span class="s">"Jump"</span> | <span class="s">"Interact"</span>;
+
+<span class="k">interface</span> <span class="p">ActionMap</span> {
+  <span class="p">bind</span>(action: <span class="p">ActionId</span>, ...codes: <span class="p">KeyCode</span>[]): <span class="k">void</span>;
+  <span class="p">isDown</span>(action: <span class="p">ActionId</span>): <span class="k">boolean</span>;
+  <span class="p">wasPressed</span>(action: <span class="p">ActionId</span>): <span class="k">boolean</span>;
+  <span class="p">wasReleased</span>(action: <span class="p">ActionId</span>): <span class="k">boolean</span>;
+}
+
+<span class="c">// Resolve: action is down if ANY bound code is down</span>
+isDown(action) {
+  <span class="k">return</span> <span class="k">this</span>.#map.get(action)!.some(code =&gt; keyboard.isDown(code));
+}</pre>
+
+  <div class="grid2">
+    <div class="space-card layer-bind">
+      <h3>Belongs in bindings</h3>
+      <p>Default presets, user overrides, composite axes, “listen for rebind” UI helpers.</p>
+    </div>
+    <div class="space-card layer-bind">
+      <h3>Still not bindings</h3>
+      <p>Jump height, cooldown, which entity moves — those stay in systems / components.</p>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <strong>Don’t merge layers early.</strong> An <code>InputManager</code> that both owns DOM listeners
+    <em>and</em> action names becomes hard to test and hard to multi-device.
+    Keep devices dumb; let a thin <code>ActionMap</code> translate.
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="demo">
+  <h2><span class="num">07</span> Live: actions vs keys</h2>
+  <p>
+    Same sandbox, two readouts. Rebind Jump or Move — the “game” side only ever
+    asks about actions. Click the canvas, then use keys (or rebind first).
+  </p>
+
+  <div class="lab" id="lab-bind">
+    <div class="lab-head">
+      <div class="lab-title">Mini action map · click canvas to focus</div>
+      <p class="lab-hint">Rebind a row, press a key, then play. Systems never see the new code directly.</p>
+      <div class="lab-body">
+        <div class="bind-ui" data-binds></div>
+        <div class="btn-row" style="margin-top:0.75rem">
+          <button type="button" data-act="reset">Reset defaults</button>
+          <button type="button" data-act="clear-log">Clear log</button>
+        </div>
+      </div>
+    </div>
+    <canvas class="plot" width="720" height="280" data-play tabindex="0"></canvas>
+    <div class="readout" data-readout>
+      Click canvas · Move with bound keys · Jump pulses
+    </div>
+    <div class="event-log" data-log></div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="areo">
+  <h2><span class="num">08</span> Where Areo is today</h2>
+  <p>Map the repo onto the stack so you know what to build next vs what to leave alone.</p>
+
+  <table class="cheat">
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Areo status</th>
+        <th>Files</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Device</strong></td>
+        <td>Keyboard done · mouse class started</td>
+        <td><code>browser-keyboard-inputs.ts</code>, <code>browser-mouse-inputs.ts</code></td>
+      </tr>
+      <tr>
+        <td><strong>Orchestration</strong></td>
+        <td>Present</td>
+        <td><code>Game.#update</code> → <code>beginFrame()</code> then systems</td>
+      </tr>
+      <tr>
+        <td><strong>Engine</strong></td>
+        <td>Contracts + context wired</td>
+        <td><code>input-manager.contract.ts</code>, <code>LogicContext</code></td>
+      </tr>
+      <tr>
+        <td><strong>Bindings</strong></td>
+        <td>Not yet</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><strong>Game</strong></td>
+        <td>Systems query device codes</td>
+        <td><code>camera-system.ts</code>, etc.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="decide">
+    <h3>Recommended build order for Areo</h3>
+    <p>
+      1) Finish device managers (keyboard solid, mouse parity).<br />
+      2) Keep orchestration in <code>Game.#update</code> — add mouse <code>beginFrame</code> beside keyboard.<br />
+      3) Only then add a thin <code>ActionMap</code> and migrate systems off raw <code>KeyCode</code>.
+    </p>
+    <p>
+      Skipping ahead to rebinding UI before mouse/gamepad exist usually creates a façade
+      that only wraps one device — rebuild later.
+    </p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="rules">
+  <h2><span class="num">09</span> Ownership rules</h2>
+  <p>When you’re unsure where a feature goes, use this cheat sheet.</p>
+
+  <table class="cheat">
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>Put it in…</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>“Did the physical W key go down?”</td>
+        <td><strong>Device</strong> (+ engine query API)</td>
+      </tr>
+      <tr>
+        <td>“When do we snapshot edges?”</td>
+        <td><strong>Orchestration</strong> (game loop)</td>
+      </tr>
+      <tr>
+        <td>“What’s the TypeScript shape systems depend on?”</td>
+        <td><strong>Engine contract</strong></td>
+      </tr>
+      <tr>
+        <td>“Is Space or South the Jump button?”</td>
+        <td><strong>Bindings</strong></td>
+      </tr>
+      <tr>
+        <td>“How high does Jump launch the player?”</td>
+        <td><strong>Game system / component</strong></td>
+      </tr>
+      <tr>
+        <td>“Should menus eat gameplay input?”</td>
+        <td><strong>Game</strong> (input contexts / modes)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note bad">
+    <strong>Anti-pattern:</strong> one god <code>InputManager</code> that attaches DOM listeners,
+    stores action names, applies movement, and opens the pause menu.
+    You’ll never unit-test half of it, and the next device breaks everything.
+  </div>
+</section>
+
+<!-- 10 -->
+<section id="done">
+  <h2><span class="num">10</span> Checklist + next steps</h2>
+  <p>You’re done with this lab when you can explain each layer in one sentence:</p>
+  <ul class="checklist">
+    <li>Device: accumulates raw hardware state (no gameplay names)</li>
+    <li>Orchestration: one <code>beginFrame</code> per tick before systems</li>
+    <li>Engine: contracts + platform impls exposed on <code>LogicContext</code></li>
+    <li>Bindings: action ids → device codes (optional until rebinding matters)</li>
+    <li>Game: systems query intent and apply rules</li>
+  </ul>
+
+  <h3>Hands-on follow-ups</h3>
+  <ul>
+    <li>
+      <a href="input-manager-lab.html" style="color:var(--warm)">Input Manager Lab</a> —
+      implement keyboard edges end-to-end
+    </li>
+    <li>
+      <a href="mouse-input-lab.html" style="color:var(--warm)">Mouse Input Lab</a> —
+      position, deltas, wheel, buttons
+    </li>
+    <li>
+      Stretch: sketch an <code>ActionMap</code> that wraps your keyboard manager and migrate
+      one system from <code>KeyCode.Space</code> → <code>"Jump"</code>
+    </li>
+  </ul>
+
+  <h3>Suggested future layout</h3>
+  <pre class="code">src/engine/input/
+  browser-keyboard-inputs.ts
+  browser-mouse-inputs.ts
+  input-hub.ts          <span class="c">← beginFrame + attach for all devices</span>
+
+src/game/input/
+  actions.ts            <span class="c">← ActionId union</span>
+  default-bindings.ts   <span class="c">← Jump → Space, …</span>
+  action-map.ts         <span class="c">← resolve against engine devices</span></pre>
+</section>
+
+<footer>
+  Open from
+  <a href="./input-architecture-lab.html"><code>guides/labs/input-architecture-lab.html</code></a>.
+  Conceptual map for the stack; build details live in the keyboard and mouse labs.
+</footer>
+
+</div>
+
+<script>
+(() => {
+  // —— Stack explorer ——
+  const DETAILS = {
+    device: {
+      title: "Device level",
+      html: `<strong>One adapter per hardware surface.</strong>
+        <ul>
+          <li>Mutates a live held-set / axis buffer from platform events</li>
+          <li>Exposes digital queries after orchestration diffs it</li>
+          <li>Examples in Areo: <code>BrowserKeyboardInputs</code>, <code>BrowserMouseInputs</code></li>
+        </ul>`
+    },
+    orch: {
+      title: "Orchestration",
+      html: `<strong>The frame gate.</strong>
+        <ul>
+          <li>Called once from the game loop before systems</li>
+          <li>Turns “held since last tick” into pressed / released</li>
+          <li>Consumes mouse deltas / wheel so they don’t leak across frames</li>
+        </ul>`
+    },
+    engine: {
+      title: "Engine level",
+      html: `<strong>Reusable API surface.</strong>
+        <ul>
+          <li>Contracts stay free of DOM and game nouns</li>
+          <li>Implementations can be browser, native, or mocks for tests</li>
+          <li>Injected via <code>LogicContext</code> so systems stay pure consumers</li>
+        </ul>`
+    },
+    bind: {
+      title: "Binding system",
+      html: `<strong>Remappable vocabulary.</strong>
+        <ul>
+          <li>Action ids are stable; codes underneath can change</li>
+          <li>Multiple codes per action (keyboard OR gamepad)</li>
+          <li>Usually lives in <code>src/game/input/</code>, not the engine core</li>
+        </ul>`
+    },
+    game: {
+      title: "Game / project level",
+      html: `<strong>Gameplay consumers.</strong>
+        <ul>
+          <li>Systems read actions (or raw codes in early prototypes)</li>
+          <li>Own movement speed, jump rules, UI modes, contexts</li>
+          <li>Never attach their own keydown listeners</li>
+        </ul>`
+    }
+  };
+
+  const detailEl = document.getElementById("stack-detail");
+  const layers = document.querySelectorAll("#stack-explorer .stack-layer");
+
+  function showLayer(id) {
+    layers.forEach((el) => el.classList.toggle("active", el.dataset.layer === id));
+    const d = DETAILS[id];
+    if (!d || !detailEl) return;
+    detailEl.classList.add("show");
+    detailEl.innerHTML = `<strong>${d.title}</strong> — ${d.html}`;
+  }
+
+  layers.forEach((el) => {
+    el.addEventListener("click", () => showLayer(el.dataset.layer));
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        showLayer(el.dataset.layer);
+      }
+    });
+  });
+  showLayer("device");
+
+  // —— Mini input + action map demo ——
+  class MiniDevice {
+    constructor() {
+      this.down = new Set();
+      this.prevDown = new Set();
+      this.pressed = new Set();
+      this.released = new Set();
+    }
+    beginFrame() {
+      this.pressed.clear();
+      this.released.clear();
+      for (const c of this.down) if (!this.prevDown.has(c)) this.pressed.add(c);
+      for (const c of this.prevDown) if (!this.down.has(c)) this.released.add(c);
+      this.prevDown = new Set(this.down);
+    }
+    onDown(code, repeat) {
+      if (repeat) return;
+      this.down.add(code);
+    }
+    onUp(code) { this.down.delete(code); }
+    blur() { this.down.clear(); }
+    isDown(c) { return this.down.has(c); }
+    wasPressed(c) { return this.pressed.has(c); }
+    wasReleased(c) { return this.released.has(c); }
+  }
+
+  class MiniActions {
+    constructor(device, defaults) {
+      this.device = device;
+      this.map = new Map();
+      this.setDefaults(defaults);
+    }
+    setDefaults(defaults) {
+      this.map.clear();
+      for (const [action, codes] of Object.entries(defaults)) {
+        this.map.set(action, [...codes]);
+      }
+    }
+    codes(action) { return this.map.get(action) || []; }
+    rebind(action, code) { this.map.set(action, [code]); }
+    isDown(action) {
+      return this.codes(action).some((c) => this.device.isDown(c));
+    }
+    wasPressed(action) {
+      return this.codes(action).some((c) => this.device.wasPressed(c));
+    }
+  }
+
+  const DEFAULTS = {
+    MoveForward: ["KeyW", "ArrowUp"],
+    MoveBack: ["KeyS", "ArrowDown"],
+    MoveLeft: ["KeyA", "ArrowLeft"],
+    MoveRight: ["KeyD", "ArrowRight"],
+    Jump: ["Space"]
+  };
+
+  const lab = document.getElementById("lab-bind");
+  if (!lab) return;
+
+  const canvas = lab.querySelector("[data-play]");
+  const readout = lab.querySelector("[data-readout]");
+  const logEl = lab.querySelector("[data-log]");
+  const bindsEl = lab.querySelector("[data-binds]");
+  const device = new MiniDevice();
+  const actions = new MiniActions(device, DEFAULTS);
+  let listening = null;
+
+  function logLine(html) {
+    const row = document.createElement("div");
+    row.innerHTML = html;
+    logEl.prepend(row);
+    while (logEl.children.length > 30) logEl.lastChild.remove();
+  }
+
+  function pretty(code) {
+    return ({
+      KeyW: "W", KeyA: "A", KeyS: "S", KeyD: "D", Space: "Space",
+      ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→"
+    })[code] || code;
+  }
+
+  function renderBinds() {
+    bindsEl.innerHTML = "";
+    for (const action of Object.keys(DEFAULTS)) {
+      const row = document.createElement("div");
+      row.className = "bind-row";
+      const codes = actions.codes(action).map(pretty).join(", ");
+      row.innerHTML = `
+        <div class="action">${action}</div>
+        <div class="codes"><em>${codes}</em></div>
+      `;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = listening === action ? "Press a key…" : "Rebind";
+      if (listening === action) btn.classList.add("listening");
+      btn.addEventListener("click", () => {
+        listening = listening === action ? null : action;
+        renderBinds();
+        if (listening) logLine(`<span class="act">listening</span> for <em>${action}</em>…`);
+      });
+      row.appendChild(btn);
+      bindsEl.appendChild(row);
+    }
+  }
+  renderBinds();
+
+  lab.querySelector("[data-act='reset']")?.addEventListener("click", () => {
+    listening = null;
+    actions.setDefaults(DEFAULTS);
+    renderBinds();
+    logLine(`<span class="fr">reset</span> to defaults`);
+  });
+  lab.querySelector("[data-act='clear-log']")?.addEventListener("click", () => {
+    logEl.innerHTML = "";
+  });
+
+  canvas.addEventListener("click", () => canvas.focus());
+
+  const onKeyDown = (e) => {
+    if (document.activeElement !== canvas && !lab.contains(document.activeElement)) return;
+    if (listening) {
+      e.preventDefault();
+      if (e.repeat) return;
+      actions.rebind(listening, e.code);
+      logLine(`<span class="act">bound</span> ${listening} → <em>${pretty(e.code)}</em>`);
+      listening = null;
+      renderBinds();
+      return;
+    }
+    e.preventDefault();
+    device.onDown(e.code, e.repeat);
+  };
+  const onKeyUp = (e) => {
+    device.onUp(e.code);
+  };
+
+  canvas.addEventListener("keydown", onKeyDown);
+  canvas.addEventListener("keyup", onKeyUp);
+  window.addEventListener("blur", () => device.blur());
+
+  const ctx = canvas.getContext("2d");
+  const pos = { x: canvas.width / 2, y: canvas.height / 2 };
+  let pulse = 0;
+  let last = performance.now();
+  let frame = 0;
+
+  const loop = (now) => {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+
+    // Orchestration
+    device.beginFrame();
+
+    // Game layer — only actions
+    let x = 0, y = 0;
+    if (actions.isDown("MoveForward")) y -= 1;
+    if (actions.isDown("MoveBack")) y += 1;
+    if (actions.isDown("MoveLeft")) x -= 1;
+    if (actions.isDown("MoveRight")) x += 1;
+    const len = Math.hypot(x, y);
+    if (len > 0) { x /= len; y /= len; }
+
+    const speed = 220;
+    pos.x = Math.max(16, Math.min(canvas.width - 16, pos.x + x * speed * dt));
+    pos.y = Math.max(16, Math.min(canvas.height - 16, pos.y + y * speed * dt));
+
+    if (actions.wasPressed("Jump")) {
+      pulse = 1;
+      frame++;
+      logLine(`<span class="fr">frame ${frame}</span> <span class="dn">action</span> Jump pressed`);
+    }
+    pulse = Math.max(0, pulse - dt * 2.2);
+
+    // Draw
+    ctx.fillStyle = "#0b0e13";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#2b3342";
+    ctx.lineWidth = 1;
+    for (let gx = 0; gx < canvas.width; gx += 40) {
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, canvas.height); ctx.stroke();
+    }
+    for (let gy = 0; gy < canvas.height; gy += 40) {
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(canvas.width, gy); ctx.stroke();
+    }
+
+    const r = 12 + pulse * 18;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = pulse > 0 ? "#7dcca0" : "#8eb4e8";
+    ctx.fill();
+    ctx.strokeStyle = "#e8ecf3";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const active = ["MoveForward", "MoveBack", "MoveLeft", "MoveRight", "Jump"]
+      .filter((a) => actions.isDown(a));
+
+    readout.innerHTML =
+      document.activeElement === canvas
+        ? `actions <em>${active.join(" ") || "—"}</em> · pos <em>${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}</em>`
+        : `Click canvas to focus · then move / jump with current bindings`;
+
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

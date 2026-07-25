@@ -1,6 +1,11 @@
-import { isRenderingComponent, type LogicComponent, type RenderingComponent, isLogicComponent, type Component, InternalComponent, type RenderingPipelineComponent } from "../components/components";
+import { World } from "../../game/world";
+import { BasicCamera } from "../camera/basic-camera";
+import { isRenderingComponent, type LogicComponent, type RenderingComponent, isLogicComponent, type Component, type LogicContext } from "../components/components";
+import type { Camera, CameraConfiguration, CameraConfigurationKind } from "../contracts/camera.contract";
+import type { InputManager } from "../contracts/input-manager.contract";
 import type { Renderer, RendererKind } from "../graphics/types";
 import { WebGlRenderer } from "../graphics/webgl/web-gl-renderer";
+import { BrowserKeyboardInputs } from "../input/browser-keyboard-inputs";
 import type { GameWorld } from "./world";
 
 /**
@@ -12,24 +17,40 @@ export interface GameManager {
 }
 
 export interface GameManagerConfig {
-  parentElement: HTMLElement;
+  parentElement: HTMLCanvasElement;
   renderer: RendererKind;
+  camera: CameraConfigurationKind;
 }
 
 export abstract class Game implements GameManager {
   #lastTime = 0;
   #renderer: Renderer;
-
   #parentElement;
+
+  #camera: Camera;
+
+  #logicContext: LogicContext;
 
   #renderingComponents: RenderingComponent[] = [];
   #logicComponents: LogicComponent[] = [];
+  #keyboardInputs: InputManager = new BrowserKeyboardInputs();
 
-  #world: GameWorld<string> | null = null;
+  #world: GameWorld<string>;
 
   constructor(config: GameManagerConfig) {
     this.#parentElement = config.parentElement;
     this.#renderer = this.#setupRenderer(config.renderer);
+    this.#camera = this.#setupCamera(config.camera);
+
+    this.#world = new World();
+    this.#keyboardInputs.attach();
+
+    this.#logicContext = {
+      deltaTime: 0,
+      camera: this.#camera,
+      world: this.#world,
+      keyboard: this.#keyboardInputs,
+    };
   }
 
   start(): void {
@@ -52,6 +73,20 @@ export abstract class Game implements GameManager {
     this.#initRenderer();
   }
 
+  #setupCamera(config: CameraConfiguration) {
+    if (config.type === "basic") {
+      return BasicCamera.create(
+        {
+          type: config.type,
+          initialPlacement: config.initialPlacement,
+        },
+        { canvas: this.#parentElement },
+      );
+    }
+
+    throw new Error("Unsupported camera");
+  }
+
   /**
    * Setups the renderer
    *
@@ -67,7 +102,7 @@ export abstract class Game implements GameManager {
       return new WebGlRenderer(this.#parentElement);
     }
 
-    throw new Error("Only canvas-2d is supported");
+    throw new Error("Unsupported renderer");
   }
 
   #initRenderer() {
@@ -104,8 +139,10 @@ export abstract class Game implements GameManager {
    * @param deltaTime
    */
   #update(deltaTime: number) {
+    this.#logicContext.deltaTime = deltaTime;
+    this.#keyboardInputs.beginFrame();
     for (const logic of this.#logicComponents) {
-      logic.update(deltaTime);
+      logic.update(this.#logicContext);
     }
   }
 
@@ -117,6 +154,7 @@ export abstract class Game implements GameManager {
       return;
     }
 
+    renderer.setCamera(this.#camera);
     renderer.renderGrid();
 
     renderer.setup("basic");

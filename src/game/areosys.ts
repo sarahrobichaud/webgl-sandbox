@@ -5,6 +5,13 @@ import { MESHES, type MeshId } from "../engine/graphics/shapes/mesh";
 import { MovementSystem } from "./systems/movement-system";
 import { World } from "./world";
 import { MeshSwitchSystem } from "./systems/mesh-switch-system";
+import { CameraSystem } from "./systems/camera-system";
+import type { ActionCodes } from "./actions";
+
+export interface MainScene {
+  actions: ActionCodes;
+  storage: "planes";
+}
 
 export interface AeroSysConfig {
   gameConfig: GameManagerConfig;
@@ -16,12 +23,10 @@ export class AeroSys extends Game {
   constructor(config: AeroSysConfig) {
     super(config.gameConfig);
 
-    const components = [
-      MovementSystem, MeshSwitchSystem,
-    ];
-
-    for (const Component of components) {
-      this.registerComponents(new Component(this.#world));
+    for (const Logic of [
+      MeshSwitchSystem, MovementSystem, CameraSystem,
+    ]) {
+      super.registerComponents(new Logic());
     }
 
     this.#registerMeshes(this.#world);

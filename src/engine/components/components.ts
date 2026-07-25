@@ -1,29 +1,32 @@
-import type { Position, Transform2D, Transform3D } from "../core/primitives";
+import type { Camera } from "../contracts/camera.contract";
+import type { InputManager } from "../contracts/input-manager.contract";
+import type { Position, Transform3D } from "../core/primitives";
 import type { EntityId } from "../core/types";
 import type { GameWorld } from "../core/world";
-import type { Renderer2D } from "../graphics/types";
-import type { RenderMatrix } from "../graphics/render-matrix";
+import type { Renderer3D } from "../graphics/types";
 
 export interface Component {
   enabled: boolean;
 }
 
 export interface RenderingComponent extends Component {
-  draw(renderer: Renderer2D): void;
+  draw(renderer: Renderer3D): void;
+}
+
+export interface LogicContext {
+  deltaTime: number;
+  world: GameWorld<string>;
+  camera: Camera;
+  input: InputManager;
 }
 
 export interface LogicComponent extends Component {
-  update(deltaTime: number): void;
+  update(context: LogicContext): void;
 }
 
 export interface CorePrimitivesStorage {
   positions: Map<EntityId, Position>;
-  transforms2D: Map<EntityId, Transform2D>;
   transforms3D: Map<EntityId, Transform3D>;
-}
-
-export interface RenderingPipelineComponent extends Component {
-  update(entities: Iterable<EntityId>, storage: CorePrimitivesStorage, matrices: Map<EntityId, RenderMatrix>): void;
 }
 
 export abstract class InternalComponent implements Component {
@@ -35,24 +38,6 @@ export abstract class InternalComponent implements Component {
 
   get enabled() {
     return this.#enabled;
-  }
-}
-
-export abstract class GameComponent<WorldStorage extends string> implements Component {
-  #enabled: boolean;
-  #world: GameWorld<WorldStorage>;
-
-  constructor(world: GameWorld<WorldStorage>, enabled: boolean = true) {
-    this.#enabled = enabled;
-    this.#world = world;
-  }
-
-  get enabled() {
-    return this.#enabled;
-  }
-
-  get world() {
-    return this.#world;
   }
 }
 
