@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Runtime vs Domain Lab — what "runtime" actually means</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #12151d;
+    --bg-elev: #1a1f2a;
+    --bg-plot: #0b0e13;
+    --ink: #e8ecf3;
+    --muted: #95a0b4;
+    --faint: #3c4658;
+    --line: #2b3342;
+    --accent: #8eb4e8;
+    --accent2: #e8a45c;
+    --good: #7dcca0;
+    --warn: #e0b85c;
+    --bad: #e07a7a;
+    --radius: 10px;
+    --pad: clamp(1rem, 3vw, 2rem);
+    --max: 48rem;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 100% 0%, #182338 0%, transparent 52%),
+      radial-gradient(ellipse 50% 35% at 0% 15%, #1a2a24 0%, transparent 45%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 1.06rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: var(--pad); padding-bottom: 5rem; }
+
+  header.hero {
+    padding: 2rem 0 1.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.55rem;
+  }
+  h1 {
+    font-family: Syne, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.85rem, 5vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.8rem;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 40rem; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .meta { margin-top: 1.1rem; display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+  }
+  .pill em { color: var(--accent); font-style: normal; }
+
+  nav.toc { margin: 1.6rem 0 0; display: grid; gap: 0.28rem; }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    border-left: 2px solid var(--faint);
+    padding: 0.12rem 0 0.12rem 0.65rem;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+
+  section { margin: 2.85rem 0; scroll-margin-top: 1.2rem; }
+  h2 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.55rem;
+  }
+  .num { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--accent); margin-right: 0.35rem; }
+  p { color: var(--muted); margin: 0 0 0.85rem; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.84em;
+    background: #0a0c10;
+    padding: 0.08em 0.32em;
+    border-radius: 4px;
+    color: #c5d0e0;
+  }
+  ul, ol { color: var(--muted); padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+
+  .note {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 0.95rem;
+    margin: 1rem 0 1.15rem;
+    color: var(--muted);
+    font-size: 0.96rem;
+  }
+  .note.warn { border-left-color: var(--warn); }
+  .note.bad { border-left-color: var(--bad); }
+  .note.good { border-left-color: var(--good); }
+  .note strong { color: var(--ink); }
+
+  .lab {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1.05rem 0;
+  }
+  .lab-head { padding: 0.7rem 0.95rem; border-bottom: 1px solid var(--line); background: rgba(0,0,0,0.22); }
+  .lab-title {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.55rem;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 0.7rem 1rem; align-items: flex-end; }
+  .ctrl { flex: 1; min-width: 8.5rem; display: flex; flex-direction: column; gap: 0.18rem; }
+  .ctrl label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex; justify-content: space-between; gap: 0.5rem;
+  }
+  .ctrl label .val { color: var(--ink); white-space: nowrap; }
+  .ctrl input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .toggle-row button {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.32rem 0.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .toggle-row button.on { border-color: var(--accent); background: #16233a; color: var(--accent); }
+
+  canvas.plot { display: block; width: 100%; height: auto; background: var(--bg-plot); }
+  .readout {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+    padding: 0.55rem 0.95rem;
+    border-top: 1px solid var(--line);
+    line-height: 1.55;
+  }
+  .readout em { color: var(--accent2); font-style: normal; }
+
+  /* ownership quiz */
+  .quiz-item {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 1.02rem;
+    color: var(--ink);
+    padding: 0.4rem 0.95rem 0.7rem;
+  }
+  .quiz-item small { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
+  .quiz-actions { display: flex; gap: 0.5rem; padding: 0 0.95rem 0.7rem; flex-wrap: wrap; }
+  .quiz-actions button {
+    flex: 1; min-width: 9rem;
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 7px;
+    padding: 0.55rem 0.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  .quiz-actions button:hover { border-color: var(--accent); }
+  .quiz-feedback {
+    padding: 0.7rem 0.95rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.92rem;
+    color: var(--muted);
+    min-height: 2.4rem;
+  }
+  .quiz-feedback.right { color: var(--good); }
+  .quiz-feedback.wrong { color: var(--bad); }
+  .quiz-feedback strong { color: var(--ink); }
+  .quiz-progress {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    padding: 0 0.95rem 0.75rem;
+  }
+  .quiz-progress em { color: var(--accent); font-style: normal; }
+
+  .cols { display: grid; grid-template-columns: 1fr; gap: 0.55rem; margin: 1rem 0; }
+  @media (min-width: 34rem) { .cols.two { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.8rem 0.95rem;
+  }
+  .card h3 { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; margin: 0 0 0.45rem; }
+  .card.runtime { border-top: 3px solid var(--accent); }
+  .card.domain { border-top: 3px solid var(--accent2); }
+  .card.runtime h3 { color: var(--accent); }
+  .card.domain h3 { color: var(--accent2); }
+  .card p { margin: 0 0 0.4rem; font-size: 0.9rem; }
+  .card ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; }
+
+  .decide {
+    background: #15243a;
+    border: 1px solid #2a3f5a;
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1.2rem 0;
+  }
+  .decide h3 { font-family: Syne, sans-serif; margin: 0 0 0.45rem; font-size: 1.05rem; color: var(--accent); }
+  .decide p { margin: 0 0 0.5rem; }
+  .decide p:last-child { margin: 0; }
+
+  table.cheat { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 1rem 0; }
+  table.cheat th, table.cheat td { border: 1px solid var(--line); padding: 0.5rem 0.65rem; text-align: left; color: var(--muted); vertical-align: top; }
+  table.cheat th { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; color: var(--accent); background: var(--bg-elev); }
+  table.cheat td strong { color: var(--ink); }
+  .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.66rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .tag.rt { color: var(--accent); border: 1px solid #35507a; background: #13233a; }
+  .tag.dom { color: var(--accent2); border: 1px solid #5a4326; background: #2a2114; }
+
+  footer { margin-top: 3rem; padding-top: 1.4rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.88rem; }
+  footer a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Concepts · interactive</p>
+  <h1>Runtime vs Domain Lab</h1>
+  <p class="lede">
+    You have <code>Runtime</code>, <code>Session</code>, <code>Simulation</code>, and <code>Scene</code> stubbed out,
+    and the fuzzy part is <strong>what "runtime" actually means</strong> and why some things belong to it while
+    others don't. This lab builds one reliable instinct: <strong>the runtime <em>runs</em> the game; the domain <em>is</em> the game.</strong>
+  </p>
+  <div class="meta">
+    <span class="pill"><em>test:</em> would it survive with no screen?</span>
+    <span class="pill"><em>maps to:</em> your engine/core stubs</span>
+    <span class="pill"><em>why:</em> background airports</span>
+  </div>
+
+  <nav class="toc">
+    <a href="#overloaded">1 · The word is overloaded</a>
+    <a href="#two">2 · Two meanings, one instinct</a>
+    <a href="#litmus">3 · The litmus test (quiz)</a>
+    <a href="#headless">4 · Headless: run with no renderer</a>
+    <a href="#responsibilities">5 · Who owns what</a>
+    <a href="#stubs">6 · Mapping onto your code</a>
+    <a href="#decide">7 · A concrete default for Aero</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="overloaded">
+  <h2><span class="num">01</span> The word is overloaded</h2>
+  <p>
+    "Runtime" gets used for three unrelated things, which is exactly why it feels slippery:
+  </p>
+  <ul>
+    <li><strong>The platform runtime</strong> — the JS engine / browser that executes your code. Not your concern here.</li>
+    <li><strong>"At runtime"</strong> — an adverb meaning "while the program is running," as opposed to compile time.</li>
+    <li><strong>Your <code>Runtime</code> class</strong> — a thing <em>you</em> named. This is the one that needs a crisp definition.</li>
+  </ul>
+  <div class="note">
+    This lab is only about the third one. When we say <strong>runtime</strong> below, we mean
+    <strong>the host that drives your game each frame</strong> — not the browser, not the adverb.
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="two">
+  <h2><span class="num">02</span> Two meanings, one instinct</h2>
+  <p>
+    Split every part of your engine into two buckets. Almost everything falls cleanly into one.
+  </p>
+
+  <div class="cols two">
+    <div class="card runtime">
+      <h3>RUNTIME · the machinery that runs the game</h3>
+      <p>Exists to make things happen over time and on screen. It is <strong>plumbing</strong>, not content.</p>
+      <ul>
+        <li>the frame loop / <code>requestAnimationFrame</code></li>
+        <li>the renderer + canvas</li>
+        <li>input devices</li>
+        <li>the scheduler (who ticks, how often)</li>
+        <li>scene management (what's drawn)</li>
+      </ul>
+    </div>
+    <div class="card domain">
+      <h3>DOMAIN · the game itself</h3>
+      <p>The stuff a save file is made of. It has <strong>meaning</strong> even with no window open.</p>
+      <ul>
+        <li>the Session (the loaded game)</li>
+        <li>Simulations (airports)</li>
+        <li>money, reputation, routes</li>
+        <li>layouts, facilities, queues</li>
+        <li>rules and actions</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note good">
+    <strong>The instinct in one line:</strong> if you deleted the window and the keyboard, the
+    <span style="color:var(--accent2)">domain</span> is what you'd still want to keep simulating and save to disk.
+    The <span style="color:var(--accent)">runtime</span> is everything you'd have to rebuild to show it again.
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="litmus">
+  <h2><span class="num">03</span> The litmus test</h2>
+  <p>
+    One question decides almost every case:
+  </p>
+  <p style="color:var(--ink)"><em>"If I close the screen, must this still exist for the airport to keep making money?"</em></p>
+  <p>
+    Yes → <span style="color:var(--accent2)">domain</span>. No → <span style="color:var(--accent)">runtime</span> (or scene).
+    Try it below — guess before you reveal.
+  </p>
+
+  <div class="lab" data-lab="quiz">
+    <div class="lab-head">
+      <div class="lab-title">Runtime or domain?</div>
+    </div>
+    <div class="quiz-item" data-quiz-item>…</div>
+    <div class="quiz-actions">
+      <button type="button" data-answer="runtime">Runtime / Scene</button>
+      <button type="button" data-answer="domain">Domain (survives)</button>
+    </div>
+    <div class="quiz-feedback" data-quiz-feedback>Pick one.</div>
+    <div class="quiz-progress" data-quiz-progress></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="headless">
+  <h2><span class="num">04</span> Headless: run with no renderer</h2>
+  <p>
+    Here's the payoff for your game. If the domain is truly separate, a Simulation can tick
+    <strong>with no renderer attached at all</strong> — which is exactly what a background airport is.
+    Detach the screen below and watch the game keep running.
+  </p>
+
+  <div class="lab" data-lab="headless">
+    <div class="lab-head">
+      <div class="lab-title">Runtime loop vs domain state</div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>renderer</label>
+          <div class="toggle-row" data-toggles="render">
+            <button type="button" data-val="on" class="on">attached</button>
+            <button type="button" data-val="off">detached (headless)</button>
+          </div>
+        </div>
+        <div class="ctrl">
+          <label>loop</label>
+          <div class="toggle-row" data-toggles="run">
+            <button type="button" data-val="play" class="on">running</button>
+            <button type="button" data-val="pause">paused</button>
+          </div>
+        </div>
+        <div class="ctrl">
+          <label>focused sim speed <span class="val" data-out="fg">1.0×</span></label>
+          <input type="range" data-in="fg" min="0.25" max="3" step="0.25" value="1" />
+        </div>
+      </div>
+    </div>
+    <canvas class="plot" width="720" height="300"></canvas>
+    <div class="readout" data-readout></div>
+  </div>
+
+  <div class="note warn">
+    <strong>The trap:</strong> if entity data, money, or layout lived in the renderer or the Scene,
+    "detached" would mean "dead." Detaching only <em>stops the drawing</em> because the numbers live in the domain.
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="responsibilities">
+  <h2><span class="num">05</span> Who owns what</h2>
+  <p>
+    Two jobs people cram into one "runtime" — keep them apart:
+  </p>
+  <table class="cheat">
+    <thead><tr><th>Job</th><th>Owner</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Own the set of simulations</strong> (create, load, save, dispose)</td>
+        <td><span class="tag dom">Session</span></td>
+        <td>It's the save. Airports exist because the player owns them.</td>
+      </tr>
+      <tr>
+        <td><strong>Decide who ticks &amp; how hard</strong> (foreground / background / dormant)</td>
+        <td><span class="tag rt">Runtime scheduler</span></td>
+        <td>It owns the frame loop and knows what's focused.</td>
+      </tr>
+      <tr>
+        <td><strong>Advance one simulation</strong> (queues, money, flows)</td>
+        <td><span class="tag dom">Simulation</span></td>
+        <td>Pure game rules; no renderer, no input.</td>
+      </tr>
+      <tr>
+        <td><strong>Decide what's on screen</strong> (active view + overlays)</td>
+        <td><span class="tag rt">SceneManager</span></td>
+        <td>Presentation only; reads domain, sends actions.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>Foreground vs background is a <span style="color:var(--accent)">policy</span>, not a subclass.</strong>
+    Same <code>Simulation</code> class — the scheduler just calls <code>update()</code> more or less often with a
+    bigger or smaller game-step.
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="stubs">
+  <h2><span class="num">06</span> Mapping onto your code</h2>
+  <p>
+    Your stubs already sketch this shape. Here's the honest reading of each:
+  </p>
+  <table class="cheat">
+    <thead><tr><th>File</th><th>Bucket</th><th>Should hold</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>runtime/runtime.ts</code></td>
+        <td><span class="tag rt">runtime</span></td>
+        <td>Loop, renderer wiring, scheduler; <strong>coordinates</strong> Session + SceneManager. No game state of its own.</td>
+      </tr>
+      <tr>
+        <td><code>runtime/session/session.ts</code></td>
+        <td><span class="tag dom">domain</span></td>
+        <td><code>Map&lt;LocaleId, Simulation&gt;</code>, money, reputation, routes, clock. This is the save.</td>
+      </tr>
+      <tr>
+        <td><code>runtime/simulation/simulation.ts</code></td>
+        <td><span class="tag dom">domain</span></td>
+        <td>One airport's state + <code>update(step)</code>. Runnable with <strong>no renderer</strong>.</td>
+      </tr>
+      <tr>
+        <td><code>runtime/scene/scene.ts</code></td>
+        <td><span class="tag rt">runtime</span></td>
+        <td>Projection of a Simulation for display; render instances, camera, selection. Disposable.</td>
+      </tr>
+      <tr>
+        <td><code>core/instance.ts</code></td>
+        <td><span class="tag rt">runtime</span></td>
+        <td>Today it owns loop + renderer + world + input all at once — this is the god-object to split.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note bad">
+    <strong>Current smell:</strong> <code>instance.ts</code> holds <code>#world</code>, <code>#renderer</code>,
+    <code>#camera</code>, input, and the loop together. That fuses runtime and domain — which is why "where does
+    this live?" keeps being ambiguous. Splitting it is the whole point of the new <code>runtime/</code> folder.
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="decide">
+  <h2><span class="num">07</span> A concrete default for Aero</h2>
+
+  <div class="decide">
+    <h3>The split to commit to</h3>
+    <p><strong>Runtime</strong> = loop + renderer + input + scheduler + scene management. Owns <em>no</em> game state.</p>
+    <p><strong>Session</strong> = the loaded game. Owns the simulations and everything a save contains.</p>
+    <p><strong>Simulation</strong> = one airport, headless. Ticks from a game-step; never touches the renderer.</p>
+    <p><strong>Scene</strong> = a disposable projection of a Simulation for the player to look at and command.</p>
+  </div>
+
+  <div class="note good">
+    <strong>Keep repeating the test.</strong> Looking at anything and unsure where it lives? Ask:
+    <em>"If I close this screen, must it still exist for the airport to keep making money?"</em>
+    Yes → domain (Session/Simulation). No → runtime/Scene.
+  </div>
+
+  <p>
+    Two tests worth designing against, because they force the boundary to stay honest:
+  </p>
+  <ul>
+    <li>Can you <strong>close a Scene and reopen it</strong> with nothing lost but camera and animation phase?</li>
+    <li>Can <strong>two Scenes observe one Simulation</strong> at once (map marker + detailed view)? If yes, "Scene owns the data" is impossible — good.</li>
+  </ul>
+</section>
+
+<footer>
+  Built for the Aero engine's <code>runtime/</code> split. Pair with the lifecycle notes in
+  <a href="./">guides/labs/</a>.
+</footer>
+
+</div>
+
+<script>
+function labState(root) {
+  const state = {};
+  root.querySelectorAll("[data-in]").forEach((el) => {
+    state[el.dataset.in] = parseFloat(el.value);
+    const sync = () => {
+      state[el.dataset.in] = parseFloat(el.value);
+      const out = root.querySelector(`[data-out="${el.dataset.in}"]`);
+      if (out) {
+        if (el.dataset.in === "fg") out.textContent = parseFloat(el.value).toFixed(2) + "×";
+        else {
+          const v = state[el.dataset.in];
+          out.textContent = Number.isInteger(v) ? String(v) : v.toFixed(2);
+        }
+      }
+      root._draw?.();
+    };
+    el.addEventListener("input", sync);
+    sync();
+  });
+  root.querySelectorAll("[data-toggles]").forEach((row) => {
+    const key = row.dataset.toggles;
+    const on = row.querySelector("button.on") || row.querySelector("button");
+    state[key] = on.dataset.val;
+    row.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        row.querySelectorAll("button").forEach((b) => b.classList.remove("on"));
+        btn.classList.add("on");
+        state[key] = btn.dataset.val;
+        root._draw?.();
+      });
+    });
+  });
+  return state;
+}
+
+function clear(ctx, w, h) {
+  ctx.fillStyle = "#0b0e13";
+  ctx.fillRect(0, 0, w, h);
+}
+
+/* ------- ownership quiz ------- */
+(() => {
+  const root = document.querySelector('[data-lab="quiz"]');
+  const itemEl = root.querySelector("[data-quiz-item]");
+  const fb = root.querySelector("[data-quiz-feedback]");
+  const prog = root.querySelector("[data-quiz-progress]");
+  const btns = root.querySelectorAll(".quiz-actions button");
+
+  const items = [
+    { t: "The camera position and zoom", a: "runtime",
+      why: "Pure view state. Two players looking at the same airport would each have their own camera." },
+    { t: "How much money the player has", a: "domain",
+      why: "Core save data. It must keep changing even while you're looking at a different airport." },
+    { t: "The tile layout the player built", a: "domain",
+      why: "Persistent construction. It's the airport — losing it on scene close would be a disaster." },
+    { t: "The 8 dots milling around a shop", a: "runtime",
+      why: "Visualization sampled from flow volumes. Regenerated on entry, never saved." },
+    { t: "The check-in queue length", a: "domain",
+      why: "Drives delays and money. A background airport still accrues (or clears) its queues." },
+    { t: "The requestAnimationFrame loop", a: "runtime",
+      why: "The machinery that drives updates. It runs the game; it isn't the game." },
+    { t: "A group's destination gate and flight deadline", a: "domain",
+      why: "Determines whether they make their flight — a gameplay outcome, not a picture." },
+    { t: "The mesh/geometry for a terminal building", a: "runtime",
+      why: "A GPU asset in a catalog, referenced by id. Shared, rebuildable, not part of the save." },
+    { t: "The ghost preview while dragging a new building", a: "runtime",
+      why: "Scene-only scratch until the player commits — then it becomes a domain action." },
+    { t: "The active route between two of your airports", a: "domain",
+      why: "A Session-level contract. It exists whether or not either airport is on screen." },
+    { t: "Which scenes are currently mounted", a: "runtime",
+      why: "Scene management is presentation. It decides what's drawn, not what's true." },
+    { t: "The game clock (in-game hours/days)", a: "domain",
+      why: "Session-owned time that drives production rates. It advances independent of FPS." },
+  ];
+
+  let i = 0, score = 0, answered = false;
+
+  function render() {
+    const it = items[i];
+    itemEl.innerHTML = it.t + "<small>Would this survive with the window closed?</small>";
+    fb.textContent = "Pick one.";
+    fb.className = "quiz-feedback";
+    answered = false;
+    prog.innerHTML = `Item <em>${i + 1}</em> / ${items.length} · score <em>${score}</em>`;
+  }
+
+  btns.forEach((b) => b.addEventListener("click", () => {
+    const it = items[i];
+    if (!answered) {
+      answered = true;
+      const correct = b.dataset.answer === it.a;
+      if (correct) score++;
+      const label = it.a === "domain" ? "Domain (survives)" : "Runtime / Scene";
+      fb.className = "quiz-feedback " + (correct ? "right" : "wrong");
+      fb.innerHTML = (correct ? "Correct — " : "Not quite — ") +
+        `<strong>${label}</strong>. ${it.why} <em style="color:var(--accent)">Tap again for next.</em>`;
+      prog.innerHTML = `Item <em>${i + 1}</em> / ${items.length} · score <em>${score}</em>`;
+    } else {
+      i = (i + 1) % items.length;
+      if (i === 0) score = 0;
+      render();
+    }
+  }));
+
+  render();
+})();
+
+/* ------- headless loop ------- */
+(() => {
+  const root = document.querySelector('[data-lab="headless"]');
+  const canvas = root.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+  const readout = root.querySelector("[data-readout]");
+  const state = labState(root);
+
+  // domain state persists regardless of renderer
+  const domain = {
+    gameHours: 0,
+    money: 0,
+    fgTicks: 0,
+    bgTicks: 0,
+    fgPulse: 0,
+    bgPulse: 0,
+    fgAcc: 0,
+    bgAcc: 0,
+  };
+
+  let last = performance.now();
+
+  function step(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+
+    if (state.run === "play") {
+      // game clock advances (runtime drives it, domain stores it)
+      const gameRate = 2; // game-hours per real second baseline
+      domain.gameHours += dt * gameRate;
+
+      // focused sim ticks fast
+      domain.fgAcc += dt * state.fg;
+      const fgInterval = 0.25; // sec per focused tick
+      while (domain.fgAcc >= fgInterval) {
+        domain.fgAcc -= fgInterval;
+        domain.fgTicks++;
+        domain.money += 120;      // focused airport earns more
+        domain.fgPulse = 1;
+      }
+
+      // background sim ticks slow — SAME model, coarser policy
+      domain.bgAcc += dt;
+      const bgInterval = 1.2; // sec per background tick
+      while (domain.bgAcc >= bgInterval) {
+        domain.bgAcc -= bgInterval;
+        domain.bgTicks++;
+        domain.money += 200;      // coarse lump for the whole interval
+        domain.bgPulse = 1;
+      }
+    }
+
+    domain.fgPulse *= 0.92;
+    domain.bgPulse *= 0.94;
+
+    draw();
+    requestAnimationFrame(step);
+  }
+
+  function tickNode(x, y, label, sub, pulse, accent, ticks) {
+    // node box
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = "#111722";
+    ctx.beginPath();
+    ctx.roundRect(x, y, 190, 66, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // pulse ring
+    if (pulse > 0.04) {
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x - 4 * pulse, y - 4 * pulse, 190 + 8 * pulse, 66 + 8 * pulse, 10);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.fillStyle = accent;
+    ctx.font = "12px IBM Plex Mono";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 12, y + 22);
+    ctx.fillStyle = "#95a0b4";
+    ctx.font = "11px IBM Plex Mono";
+    ctx.fillText(sub, x + 12, y + 40);
+    ctx.fillStyle = "#e8ecf3";
+    ctx.fillText("ticks: " + ticks, x + 12, y + 56);
+  }
+
+  function draw() {
+    const w = canvas.width, h = canvas.height;
+    clear(ctx, w, h);
+    const rendering = state.render === "on";
+
+    // ---- DOMAIN band (left) ----
+    ctx.fillStyle = "#8a6a3a22";
+    ctx.fillRect(0, 0, w * 0.56, h);
+    ctx.fillStyle = "#e8a45c";
+    ctx.font = "11px IBM Plex Mono";
+    ctx.textAlign = "left";
+    ctx.fillText("DOMAIN — always alive (Session + Simulations)", 16, 22);
+
+    tickNode(20, 40, "Simulation A", "policy: FOREGROUND", domain.fgPulse, "#e8a45c", domain.fgTicks);
+    tickNode(20, 120, "Simulation B", "policy: BACKGROUND", domain.bgPulse, "#c98f4f", domain.bgTicks);
+
+    // money + clock
+    ctx.fillStyle = "#15243a";
+    ctx.strokeStyle = "#2a3f5a";
+    ctx.beginPath();
+    ctx.roundRect(20, 200, 190, 74, 8);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#7dcca0";
+    ctx.font = "13px IBM Plex Mono";
+    ctx.fillText("$ " + domain.money.toLocaleString(), 32, 228);
+    ctx.fillStyle = "#95a0b4";
+    ctx.font = "11px IBM Plex Mono";
+    ctx.fillText("game time: " + domain.gameHours.toFixed(1) + "h", 32, 250);
+    ctx.fillText("(saved state)", 32, 266);
+
+    // ---- RUNTIME boundary arrow ----
+    const midx = w * 0.56;
+    ctx.strokeStyle = "#2b3342";
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(midx, 10);
+    ctx.lineTo(midx, h - 10);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ---- RUNTIME / SCREEN band (right) ----
+    ctx.fillStyle = "#8eb4e822";
+    ctx.fillRect(midx, 0, w - midx, h);
+    ctx.fillStyle = "#8eb4e8";
+    ctx.font = "11px IBM Plex Mono";
+    ctx.fillText("RUNTIME — the screen (Scene + renderer)", midx + 14, 22);
+
+    const sx = midx + 20, sy = 40, sw = w - midx - 40, sh = h - 70;
+    ctx.fillStyle = "#0b0e13";
+    ctx.strokeStyle = rendering ? "#8eb4e8" : "#3c4658";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(sx, sy, sw, sh, 8);
+    ctx.fill(); ctx.stroke();
+
+    if (rendering) {
+      // draw a projection of focused sim: dots whose count reflects fgTicks activity
+      const cxs = sx + 18, cys = sy + 30;
+      ctx.fillStyle = "#8eb4e8";
+      ctx.font = "11px IBM Plex Mono";
+      ctx.fillText("Scene projects Simulation A", sx + 12, sy + 20);
+      const n = 12;
+      for (let k = 0; k < n; k++) {
+        const t = domain.gameHours * 0.6 + k * 0.7;
+        const px = cxs + ((Math.sin(t) * 0.5 + 0.5) * (sw - 60));
+        const py = cys + 20 + ((k % 4) * 26) + Math.sin(t * 2) * 4;
+        const glow = k === (domain.fgTicks % n) ? 4 : 0;
+        ctx.fillStyle = "#e07a7a";
+        ctx.beginPath();
+        ctx.arc(px, py, 4 + glow * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#95a0b4";
+      ctx.font = "10px IBM Plex Mono";
+      ctx.fillText("(sampled dots — not saved)", sx + 12, sy + sh - 12);
+    } else {
+      ctx.fillStyle = "#5c667a";
+      ctx.font = "13px IBM Plex Mono";
+      ctx.textAlign = "center";
+      ctx.fillText("no renderer attached", sx + sw / 2, sy + sh / 2 - 8);
+      ctx.font = "11px IBM Plex Mono";
+      ctx.fillText("simulations still ticking →", sx + sw / 2, sy + sh / 2 + 14);
+      ctx.textAlign = "left";
+    }
+
+    const paused = state.run !== "play";
+    readout.innerHTML =
+      (paused ? "<em>paused</em> — nothing advances. " :
+        `Domain advancing: A <em>${domain.fgTicks}</em> ticks, B <em>${domain.bgTicks}</em> ticks. `) +
+      (rendering
+        ? "Screen is drawing a <em>projection</em> of Sim A."
+        : "Screen <em>detached</em> — money still climbs because it lives in the domain, not the renderer.");
+  }
+
+  requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>

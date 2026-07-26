@@ -1,25 +1,22 @@
-import { AeroSys } from "./game/areosys";
+import { Instance } from "./engine/system";
+import { buildDemoScene } from "./game/scenes/demo/demo.scene";
 import "./styles/main.css";
 
 const appElement = document.querySelector("#game-view");
 
-console.log(appElement);
 if (!appElement || !(appElement instanceof HTMLCanvasElement)) {
   throw new Error("No app found");
 }
+const scenes = [
+  buildDemoScene(),
+];
 
-const game = new AeroSys({
-  gameConfig: {
+const game = Instance.initialize(
+  {
     renderer: "web-gl",
     parentElement: appElement,
-    camera: {
-      type: "basic",
-      initialPlacement: {
-        position: { x: 0, y: 0, z: 0 },
-        rotation: { rotateX: -80, rotateY: 10, rotateZ: 50 },
-      },
-    },
   },
-});
+  scenes,
+);
 
 game.start();

@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Type-Safe Extensible APIs Lab — ergonomics for engine consumers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #12151d;
+    --bg-elev: #1a1f2a;
+    --bg-plot: #0b0e13;
+    --ink: #e8ecf3;
+    --muted: #95a0b4;
+    --faint: #3c4658;
+    --line: #2b3342;
+    --accent: #8eb4e8;
+    --accent2: #e8a45c;
+    --good: #7dcca0;
+    --warn: #e0b85c;
+    --bad: #e07a7a;
+    --radius: 10px;
+    --pad: clamp(1rem, 3vw, 2rem);
+    --max: 50rem;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 55% 38% at 100% 0%, #1a2438 0%, transparent 52%),
+      radial-gradient(ellipse 45% 32% at 0% 12%, #1a2a28 0%, transparent 48%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 1.06rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: var(--pad); padding-bottom: 5rem; }
+
+  header.hero {
+    padding: 2rem 0 1.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.55rem;
+  }
+  h1 {
+    font-family: Syne, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.85rem, 5vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.8rem;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 42rem; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .meta { margin-top: 1.1rem; display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+  }
+  .pill em { color: var(--accent); font-style: normal; }
+
+  nav.toc { margin: 1.6rem 0 0; display: grid; gap: 0.28rem; }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    border-left: 2px solid var(--faint);
+    padding: 0.12rem 0 0.12rem 0.65rem;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+
+  section { margin: 2.85rem 0; scroll-margin-top: 1.2rem; }
+  h2 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.55rem;
+  }
+  h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.88rem;
+    color: var(--accent);
+    margin: 1.35rem 0 0.45rem;
+    letter-spacing: 0.02em;
+  }
+  .num { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--accent); margin-right: 0.35rem; }
+  p { color: var(--muted); margin: 0 0 0.85rem; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  ul, ol { color: var(--muted); padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.84em;
+    background: #0a0c10;
+    padding: 0.08em 0.32em;
+    border-radius: 4px;
+    color: #c5d0e0;
+  }
+
+  .note {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 0.95rem;
+    margin: 1rem 0 1.15rem;
+    color: var(--muted);
+    font-size: 0.96rem;
+  }
+  .note.warn { border-left-color: var(--warn); }
+  .note.bad { border-left-color: var(--bad); }
+  .note.good { border-left-color: var(--good); }
+  .note strong { color: var(--ink); }
+
+  .lab {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1.05rem 0;
+  }
+  .lab-head {
+    padding: 0.7rem 0.95rem;
+    border-bottom: 1px solid var(--line);
+    background: rgba(0,0,0,0.22);
+  }
+  .lab-title {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.55rem;
+  }
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .toggle-row button {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.32rem 0.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .toggle-row button.on {
+    border-color: var(--accent);
+    background: #16233a;
+    color: var(--accent);
+  }
+
+  pre.code {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    background: var(--bg-plot);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: #c5d0e0;
+    white-space: pre;
+  }
+  pre.code .c { color: #5c6b82; }
+  pre.code .k { color: #8eb4e8; }
+  pre.code .t { color: #7dcca0; }
+  pre.code .s { color: #e8a45c; }
+  pre.code .bad-line { color: #e07a7a; }
+  pre.code .good-line { color: #7dcca0; }
+
+  .scores {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+    padding: 0.75rem 0.95rem;
+    border-top: 1px solid var(--line);
+  }
+  @media (max-width: 40rem) { .scores { grid-template-columns: 1fr; } }
+  .score {
+    background: var(--bg-plot);
+    border: 1px solid var(--faint);
+    border-radius: 7px;
+    padding: 0.45rem 0.55rem;
+  }
+  .score label {
+    display: block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  .score .bars {
+    display: flex;
+    gap: 3px;
+    height: 8px;
+  }
+  .score .bars i {
+    flex: 1;
+    border-radius: 2px;
+    background: var(--faint);
+  }
+  .score .bars i.on { background: var(--accent); }
+  .score .bars i.on.warm { background: var(--accent2); }
+  .score .bars i.on.good { background: var(--good); }
+  .score .hint {
+    margin-top: 0.28rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+
+  .verdict {
+    padding: 0.7rem 0.95rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.92rem;
+    color: var(--muted);
+  }
+  .verdict strong { color: var(--ink); }
+  .verdict em { color: var(--accent2); font-style: normal; }
+
+  table.cheat {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 1rem 0;
+  }
+  table.cheat th, table.cheat td {
+    border: 1px solid var(--line);
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    color: var(--muted);
+    vertical-align: top;
+  }
+  table.cheat th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: var(--bg-elev);
+  }
+  table.cheat td strong { color: var(--ink); }
+
+  .cols { display: grid; grid-template-columns: 1fr; gap: 0.55rem; margin: 1rem 0; }
+  @media (min-width: 36rem) { .cols.two { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.8rem 0.95rem;
+  }
+  .card h3 { margin-top: 0; }
+  .card p { margin: 0 0 0.4rem; font-size: 0.9rem; }
+  .card p:last-child { margin: 0; }
+
+  .decide {
+    background: #15243a;
+    border: 1px solid #2a3f5a;
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1.2rem 0;
+  }
+  .decide h3 {
+    font-family: Syne, sans-serif;
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+  .decide p { margin: 0 0 0.5rem; }
+  .decide p:last-child { margin: 0; }
+
+  .quiz-item {
+    font-size: 1.02rem;
+    color: var(--ink);
+    padding: 0.4rem 0.95rem 0.5rem;
+  }
+  .quiz-item small { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 0.25rem; }
+  .quiz-actions { display: flex; gap: 0.5rem; padding: 0 0.95rem 0.7rem; flex-wrap: wrap; }
+  .quiz-actions button {
+    flex: 1;
+    min-width: 8rem;
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 7px;
+    padding: 0.5rem 0.55rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    cursor: pointer;
+  }
+  .quiz-actions button:hover { border-color: var(--accent); }
+  .quiz-feedback {
+    padding: 0.7rem 0.95rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.92rem;
+    color: var(--muted);
+    min-height: 2.6rem;
+  }
+  .quiz-feedback.right { color: var(--good); }
+  .quiz-feedback.wrong { color: var(--bad); }
+  .quiz-feedback strong { color: var(--ink); }
+  .quiz-progress {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    padding: 0 0.95rem 0.75rem;
+  }
+  .quiz-progress em { color: var(--accent); font-style: normal; }
+
+  .flow {
+    display: grid;
+    gap: 0.35rem;
+    margin: 1rem 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+  }
+  .flow .row {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    gap: 0.55rem;
+    align-items: start;
+  }
+  .flow .who {
+    color: var(--accent);
+    padding-top: 0.15rem;
+  }
+  .flow .what {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    color: var(--muted);
+  }
+  .flow .what strong { color: var(--ink); }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  footer a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Concepts · interactive</p>
+  <h1>Type-Safe Extensible APIs</h1>
+  <p class="lede">
+    Engines fail at the boundary: either everything is <code>string</code> and unsafe, or generics explode
+    and nobody wants to call your API. This lab compares patterns for systems that stay
+    <strong>type-safe</strong>, <strong>ergonomic to write against</strong>, and
+    <strong>easy for a game project to extend</strong> — using Aero-shaped examples (actions, scenes, commands).
+  </p>
+  <div class="meta">
+    <span class="pill"><em>goal:</em> consumer extends without forking engine</span>
+    <span class="pill"><em>maps to:</em> Action, Scene, InputManager</span>
+    <span class="pill"><em>bias:</em> inference over ceremony</span>
+  </div>
+
+  <nav class="toc">
+    <a href="#problem">1 · The consumer problem</a>
+    <a href="#explorer">2 · Approach explorer</a>
+    <a href="#patterns">3 · Six patterns, side by side</a>
+    <a href="#compose">4 · Composition recipe for Aero</a>
+    <a href="#quiz">5 · Pick the tool (quiz)</a>
+    <a href="#decide">6 · Defaults to commit to</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="problem">
+  <h2><span class="num">01</span> The consumer problem</h2>
+  <p>
+    You ship an <em>engine</em>. Someone else (you, later, or a game folder) ships a <em>project</em>
+    with its own action names, scene ids, overlays, and domain commands. The engine cannot hardcode
+    <code>"ZOOM_IN"</code> or <code>"buildMenu"</code> — but if every API takes <code>string</code>,
+    autocomplete dies and typos ship.
+  </p>
+
+  <div class="flow">
+    <div class="row">
+      <div class="who">engine</div>
+      <div class="what">Defines <strong>capabilities</strong> + constraints. Knows shapes, not game vocabulary.</div>
+    </div>
+    <div class="row">
+      <div class="who">game</div>
+      <div class="what">Supplies <strong>vocabulary</strong>: action registry, scene factories, command ports.</div>
+    </div>
+    <div class="row">
+      <div class="who">types</div>
+      <div class="what">Should <strong>flow from game → call sites</strong>, not force game to cast through <code>any</code>.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Ergonomics test:</strong> can a junior add <code>PAUSE</code> to the action map and get
+    <code>input.isActive("PAUSE")</code> autocomplete + typo errors — without touching engine source?
+    If yes, the extension model is working.
+  </div>
+
+  <div class="cols two">
+    <div class="card">
+      <h3>Too loose</h3>
+      <p><code>isActive(action: string)</code></p>
+      <p>Flexible, but every misspelled action is a runtime bug. No refactor rename.</p>
+    </div>
+    <div class="card">
+      <h3>Too rigid</h3>
+      <p>Engine enum of all actions forever</p>
+      <p>Safe for demos, hostile to real games. Forces PRs into the engine for content.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="explorer">
+  <h2><span class="num">02</span> Approach explorer</h2>
+  <p>
+    Toggle approaches. Watch how <em>safety</em>, <em>ergonomics</em>, and <em>extensibility</em> trade off.
+    Code samples are illustrative TypeScript — not copied from your tree verbatim.
+  </p>
+
+  <div class="lab" data-lab="explorer">
+    <div class="lab-head">
+      <div class="lab-title">Compare approaches</div>
+      <div class="toggle-row" data-approaches>
+        <button type="button" data-id="stringly" class="on">0 · Stringly</button>
+        <button type="button" data-id="satisfies">1 · satisfies + keyof</button>
+        <button type="button" data-id="generic">2 · Generic param</button>
+        <button type="button" data-id="schema">3 · Schema phantom</button>
+        <button type="button" data-id="brand">4 · Branded ids</button>
+        <button type="button" data-id="ports">5 · Ports / commands</button>
+        <button type="button" data-id="augment">6 · Augmentation</button>
+      </div>
+    </div>
+    <pre class="code" data-code></pre>
+    <div class="scores">
+      <div class="score">
+        <label>Type safety</label>
+        <div class="bars" data-bar="safety"></div>
+        <div class="hint" data-hint="safety"></div>
+      </div>
+      <div class="score">
+        <label>Ergonomics</label>
+        <div class="bars" data-bar="ergo"></div>
+        <div class="hint" data-hint="ergo"></div>
+      </div>
+      <div class="score">
+        <label>Extensibility</label>
+        <div class="bars" data-bar="ext"></div>
+        <div class="hint" data-hint="ext"></div>
+      </div>
+    </div>
+    <div class="verdict" data-verdict></div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="patterns">
+  <h2><span class="num">03</span> Six patterns, side by side</h2>
+
+  <h3>A · Registry + <code>satisfies</code> + <code>keyof typeof</code></h3>
+  <p>
+    You already use this for actions. Engine defines a <em>wide</em> registry shape;
+    game fills a const object; types are inferred from the object, not listed twice.
+  </p>
+  <pre class="code"><span class="c">// engine</span>
+<span class="k">export type</span> <span class="t">ActionRegistry</span> = Record&lt;<span class="t">string</span>, { key: <span class="t">Button</span> }&gt;;
+
+<span class="c">// game</span>
+<span class="k">export const</span> Action = {
+  ZOOM_IN: { key: KeyboardButton.KeyE },
+  ZOOM_OUT: { key: KeyboardButton.KeyQ },
+} <span class="k">satisfies</span> <span class="t">ActionRegistry</span>;
+
+<span class="k">export type</span> <span class="t">ActionCodes</span> = <span class="k">keyof typeof</span> Action;
+<span class="c">// "ZOOM_IN" | "ZOOM_OUT"</span></pre>
+  <div class="note good">
+    <strong>Why it feels good:</strong> one source of truth. Add a key → types update.
+    <code>satisfies</code> checks shape without widening values to <code>string</code>.
+  </div>
+
+  <h3>B · Generic capability surfaces</h3>
+  <p>
+    Engine APIs take a type parameter defaulting to <code>string</code>, but game code
+    instantiates with its union. Inference at construction is the ergonomic trick.
+  </p>
+  <pre class="code"><span class="c">// engine</span>
+<span class="k">interface</span> <span class="t">InputManager</span>&lt;<span class="t">Action</span> <span class="k">extends</span> <span class="t">string</span> = <span class="t">string</span>&gt; {
+  isActive(action: <span class="t">Action</span>): <span class="t">boolean</span>;
+}
+
+<span class="c">// preserve Action through the factory</span>
+<span class="k">function</span> createInput&lt;<span class="t">R</span> <span class="k">extends</span> <span class="t">ActionRegistry</span>&gt;(
+  registry: <span class="t">R</span>,
+): <span class="t">InputManager</span>&lt;<span class="k">keyof</span> <span class="t">R</span> &amp; <span class="t">string</span>&gt;;</pre>
+  <div class="note">
+    <strong>Trap:</strong> if <code>createInput</code> returns <code>InputManager&lt;string&gt;</code>,
+    you threw away the consumer’s vocabulary. Always thread <code>keyof R</code> out.
+  </div>
+
+  <h3>C · Schema / phantom generic on Scene</h3>
+  <p>
+    Scene carries a type parameter describing <em>this project’s</em> vocabulary
+    (actions, storage kind, overlay names). The value may not store the schema —
+    it’s a compile-time phantom.
+  </p>
+  <pre class="code"><span class="c">// engine</span>
+<span class="k">interface</span> <span class="t">SceneSchema</span> {
+  actions: <span class="t">string</span>;
+  overlays?: <span class="t">string</span>;
+}
+
+<span class="k">interface</span> <span class="t">Scene</span>&lt;<span class="t">S</span> <span class="k">extends</span> <span class="t">SceneSchema</span> = <span class="t">SceneSchema</span>&gt; {
+  id: <span class="t">SceneId</span>;
+  <span class="c">// input in view context becomes InputManager&lt;S["actions"]&gt;</span>
+}
+
+<span class="c">// game</span>
+<span class="k">type</span> <span class="t">DemoSchema</span> = {
+  actions: <span class="t">ActionCodes</span>;
+  overlays: <span class="s">"hud"</span> | <span class="s">"build"</span>;
+};
+
+<span class="k">function</span> createDemoScene(): <span class="t">Scene</span>&lt;<span class="t">DemoSchema</span>&gt;;</pre>
+  <div class="note warn">
+    <strong>Use when</strong> several APIs must share one vocabulary (input + overlays + commands).
+    <strong>Skip when</strong> a single registry already flows types — don’t nest phantoms for sport.
+  </div>
+
+  <h3>D · Branded ids</h3>
+  <p>
+    Prevents mixing <code>SceneId</code> with <code>EntityId</code> even though both are numbers.
+    Extension-friendly: game can add more brands without engine changes.
+  </p>
+  <pre class="code"><span class="k">type</span> <span class="t">SceneId</span> = <span class="t">number</span> &amp; { <span class="k">readonly</span> __brand: <span class="s">"SceneId"</span> };
+<span class="k">type</span> <span class="t">EntityId</span> = <span class="t">number</span> &amp; { <span class="k">readonly</span> __brand: <span class="s">"EntityId"</span> };
+
+<span class="k">function</span> SceneId(value: <span class="t">number</span>): <span class="t">SceneId</span> {
+  <span class="k">return</span> value <span class="k">as</span> <span class="t">SceneId</span>;
+}
+
+<span class="c">// switchTo(entityId) → type error</span></pre>
+  <div class="note good">
+    Cheap safety for opaque handles. Pair with factories (<code>SceneId(1)</code>) so call sites stay readable.
+  </div>
+
+  <h3>E · Ports (commands), not event soup</h3>
+  <p>
+    For domain writes, give consumers a typed interface they implement or receive —
+    better ergonomics than a stringly event bus for “please do X.”
+  </p>
+  <pre class="code"><span class="c">// engine or shared contracts</span>
+<span class="k">interface</span> <span class="t">DomainCommands</span> {
+  setSimSpeed(mult: <span class="t">number</span>): <span class="t">void</span>;
+  placeBuilding(input: { kind: <span class="t">string</span>; cell: <span class="t">Cell</span> }): <span class="t">Result</span>;
+}
+
+<span class="c">// game narrows / extends</span>
+<span class="k">interface</span> <span class="t">AeroCommands</span> <span class="k">extends</span> <span class="t">DomainCommands</span> {
+  placeBuilding(input: { kind: <span class="s">"gate"</span> | <span class="s">"shop"</span>; cell: <span class="t">Cell</span> }): <span class="t">Result</span>;
+  assignGate(flight: <span class="t">EntityId</span>, gate: <span class="t">EntityId</span>): <span class="t">Result</span>;
+}
+
+<span class="c">// controller closes over AeroCommands at createDemoScene(deps)</span></pre>
+  <div class="note">
+    Controllers stay generic over <code>Cmds extends DomainCommands</code> if the engine ships
+    reusable controller helpers; otherwise game controllers just take <code>AeroCommands</code>.
+  </div>
+
+  <h3>F · Module augmentation (use sparingly)</h3>
+  <p>
+    Consumers patch an engine interface via <code>declare module</code>. Powerful for plugin ecosystems;
+    surprising for a single-game engine.
+  </p>
+  <pre class="code"><span class="c">// engine</span>
+<span class="k">export interface</span> <span class="t">EngineActions</span> {}
+
+<span class="c">// game ambient</span>
+<span class="k">declare module</span> <span class="s">"@aero/engine"</span> {
+  <span class="k">interface</span> <span class="t">EngineActions</span> {
+    ZOOM_IN: <span class="t">void</span>;
+    PAUSE: <span class="t">void</span>;
+  }
+}
+<span class="c">// engine InputManager&lt;keyof EngineActions&gt;</span></pre>
+  <div class="note bad">
+    Harder to trace, fights “vocabulary lives in game const objects,” and couples to module paths.
+    Prefer <code>satisfies</code> + generics unless you are designing third-party plugins.
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="compose">
+  <h2><span class="num">04</span> Composition recipe for Aero</h2>
+  <p>
+    You don’t pick one pattern forever. Stack a few that each solve a different boundary.
+  </p>
+
+  <table class="cheat">
+    <thead>
+      <tr><th>Boundary</th><th>Pattern</th><th>Aero touchpoint</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Input vocabulary</strong></td>
+        <td>satisfies + keyof + generic InputManager</td>
+        <td><code>game/actions.ts</code> → <code>InputManager&lt;ActionCodes&gt;</code></td>
+      </tr>
+      <tr>
+        <td><strong>Opaque handles</strong></td>
+        <td>branded ids</td>
+        <td><code>SceneId</code>, <code>EntityId</code></td>
+      </tr>
+      <tr>
+        <td><strong>Scene assembly</strong></td>
+        <td>factory returns concrete Scene; optional schema phantom</td>
+        <td><code>createDemoScene(deps)</code></td>
+      </tr>
+      <tr>
+        <td><strong>Domain writes</strong></td>
+        <td>typed command port</td>
+        <td>controller deps, not event bus</td>
+      </tr>
+      <tr>
+        <td><strong>Named parts</strong></td>
+        <td><code>Map&lt;K, V&gt;</code> with K from schema or const keys</td>
+        <td>overlays/views maps</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <pre class="code"><span class="c">// Sketch: types flow from game registries into engine surfaces</span>
+<span class="k">const</span> Action = { ... } <span class="k">satisfies</span> <span class="t">ActionRegistry</span>;
+<span class="k">type</span> <span class="t">ActionCodes</span> = <span class="k">keyof typeof</span> Action;
+
+<span class="k">function</span> createDemoScene(deps: {
+  input: <span class="t">InputManager</span>&lt;<span class="t">ActionCodes</span>&gt;;
+  commands: <span class="t">AeroCommands</span>;
+}): <span class="t">Scene</span> {
+  <span class="k">const</span> views = <span class="k">new</span> Map([[<span class="s">"map"</span>, <span class="k">new</span> DemoView()]]);
+  <span class="k">const</span> controllers = <span class="k">new</span> Map([
+    [<span class="s">"build"</span>, <span class="k">new</span> BuildController(deps.commands)],
+  ]);
+  <span class="k">return</span> {
+    id: SceneId(1),
+    views,
+    overlays: <span class="k">new</span> Map(),
+    controllers,
+    onEnter() { <span class="c">/* activate */</span> },
+    onExit() {},
+  };
+}</pre>
+
+  <div class="note good">
+    <strong>Ergonomic order:</strong> define vocabulary as values → derive types → pass into factories →
+    engine only sees generics/interfaces. Avoid re-declaring the same union in three files.
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="quiz">
+  <h2><span class="num">05</span> Pick the tool (quiz)</h2>
+  <p>Given a design need, which pattern fits? Wrong answers still teach.</p>
+
+  <div class="lab" data-lab="quiz">
+    <div class="lab-head">
+      <div class="lab-title">Scenario</div>
+    </div>
+    <div class="quiz-item" data-quiz-item></div>
+    <div class="quiz-actions" data-quiz-actions></div>
+    <div class="quiz-feedback" data-quiz-feedback>Choose an approach.</div>
+    <div class="quiz-progress" data-quiz-progress></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="decide">
+  <h2><span class="num">06</span> Defaults to commit to</h2>
+
+  <div class="decide">
+    <h3>Aero’s default stack</h3>
+    <p><strong>1.</strong> Registries with <code>satisfies</code> + <code>keyof typeof</code> for vocabularies (actions, maybe overlay names).</p>
+    <p><strong>2.</strong> Generics on engine surfaces that must mention that vocabulary (<code>InputManager&lt;Action&gt;</code>).</p>
+    <p><strong>3.</strong> Branded ids for opaque handles.</p>
+    <p><strong>4.</strong> Typed command ports for controller → domain.</p>
+    <p><strong>5.</strong> Scene factories in the game layer; engine accepts finished <code>Scene</code>.</p>
+    <p><strong>6.</strong> Schema phantoms only when multiple APIs must share one schema — not by default.</p>
+    <p><strong>7.</strong> Module augmentation only if you later want third-party plugins.</p>
+  </div>
+
+  <div class="note">
+    <strong>Design smell:</strong> if adding a new action requires editing engine enums,
+    your extension model failed. If every call site writes <code>as ActionCodes</code>,
+    inference failed at the factory boundary.
+  </div>
+
+  <div class="cols two">
+    <div class="card">
+      <h3>Optimize for</h3>
+      <p>Game authors adding content weekly.</p>
+      <p>Rename/refactor under the compiler.</p>
+      <p>Headless domain tests without casting.</p>
+    </div>
+    <div class="card">
+      <h3>Accept</h3>
+      <p>A little generic noise at factory signatures.</p>
+      <p>Maps keyed by string unions instead of free <code>string</code>.</p>
+      <p>Duplication of “wide” engine constraints vs “narrow” game types.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Built for Aero’s engine/game split. Pair with
+  <a href="./runtime-vs-domain-lab.html">Runtime vs Domain</a>
+  and your scene composition notes — types should reinforce those boundaries, not fight them.
+</footer>
+
+</div>
+
+<script>
+(function () {
+  const approaches = {
+    stringly: {
+      safety: 1,
+      ergo: 4,
+      ext: 5,
+      hints: {
+        safety: "Typos compile. Refactors are grep.",
+        ergo: "Easy to call — until production.",
+        ext: "Anything goes; nothing guides you.",
+      },
+      verdict: "Baseline anti-pattern for engine APIs. Fine for throwaway prototypes only.",
+      code: `<span class="c">// Engine — "flexible"</span>
+<span class="k">interface</span> <span class="t">InputManager</span> {
+  isActive(action: <span class="t">string</span>): <span class="t">boolean</span>;
+}
+
+<span class="c">// Game — compiles, wrong at runtime</span>
+input.isActive(<span class="s">"ZOOM_INN"</span>); <span class="bad-line">// silent bug</span>
+input.isActive(<span class="s">"zoom_in"</span>);  <span class="bad-line">// casing bug</span>`,
+    },
+    satisfies: {
+      safety: 4,
+      ergo: 5,
+      ext: 5,
+      hints: {
+        safety: "Keys are a closed union from the object.",
+        ergo: "Add a property; types follow. No dual lists.",
+        ext: "Game owns the registry; engine only constrains shape.",
+      },
+      verdict: "Best default for vocabularies. This is your Action pattern — keep leaning on it.",
+      code: `<span class="c">// Engine constraint (wide)</span>
+<span class="k">type</span> <span class="t">ActionRegistry</span> = Record&lt;<span class="t">string</span>, { key: <span class="t">Button</span> }&gt;;
+
+<span class="c">// Game vocabulary (narrow)</span>
+<span class="k">export const</span> Action = {
+  ZOOM_IN:  { key: KeyboardButton.KeyE },
+  ZOOM_OUT: { key: KeyboardButton.KeyQ },
+  PAUSE:    { key: KeyboardButton.KeyP },
+} <span class="k">satisfies</span> <span class="t">ActionRegistry</span>;
+
+<span class="k">export type</span> <span class="t">ActionCodes</span> = <span class="k">keyof typeof</span> Action;
+<span class="c">// "ZOOM_IN" | "ZOOM_OUT" | "PAUSE"</span>
+
+input.isActive(<span class="s">"PAUSE"</span>);     <span class="good-line">// ok</span>
+input.isActive(<span class="s">"PAUSEE"</span>);    <span class="bad-line">// type error</span>`,
+    },
+    generic: {
+      safety: 5,
+      ergo: 3,
+      ext: 4,
+      hints: {
+        safety: "Call sites locked to Action param.",
+        ergo: "Great if factories infer; painful if you annotate by hand.",
+        ext: "Consumers pick Action; engine stays open.",
+      },
+      verdict: "Pair with satisfies registries. The factory must return InputManager&lt;keyof R&gt;, not string.",
+      code: `<span class="k">class</span> <span class="t">InputHub</span>&lt;<span class="t">Action</span> <span class="k">extends</span> <span class="t">string</span>&gt;
+  <span class="k">implements</span> <span class="t">InputManager</span>&lt;<span class="t">Action</span>&gt; {
+  isActive(action: <span class="t">Action</span>): <span class="t">boolean</span> { <span class="c">/* ... */</span> }
+}
+
+<span class="c">// Inference bridge — the ergonomic hinge</span>
+<span class="k">function</span> createInput&lt;<span class="t">R</span> <span class="k">extends</span> <span class="t">ActionRegistry</span>&gt;(
+  registry: <span class="t">R</span>,
+): <span class="t">InputManager</span>&lt;<span class="k">keyof</span> <span class="t">R</span> &amp; <span class="t">string</span>&gt; {
+  <span class="k">const</span> hub = <span class="k">new</span> <span class="t">InputHub</span>&lt;<span class="k">keyof</span> <span class="t">R</span> &amp; <span class="t">string</span>&gt;();
+  hub.setBindings(registry);
+  <span class="k">return</span> hub;
+}
+
+<span class="k">const</span> input = createInput(Action);
+input.isActive(<span class="s">"ZOOM_IN"</span>); <span class="good-line">// ActionCodes</span>`,
+    },
+    schema: {
+      safety: 5,
+      ergo: 2,
+      ext: 4,
+      hints: {
+        safety: "One schema threads through scene + input + maps.",
+        ergo: "More type params to learn; easy to overuse.",
+        ext: "Game defines DemoSchema; engine stays generic.",
+      },
+      verdict: "Reach for this when overlays, actions, and storage must stay aligned. Otherwise prefer simpler keyof flows.",
+      code: `<span class="k">interface</span> <span class="t">SceneSchema</span> {
+  actions: <span class="t">string</span>;
+  overlays: <span class="t">string</span>;
+}
+
+<span class="k">interface</span> <span class="t">Scene</span>&lt;<span class="t">S</span> <span class="k">extends</span> <span class="t">SceneSchema</span>&gt; {
+  overlays: Map&lt;<span class="t">S</span>[<span class="s">"overlays"</span>], <span class="t">Overlay</span>&gt;;
+  <span class="c">// ViewContext.input: InputManager&lt;S["actions"]&gt;</span>
+}
+
+<span class="k">type</span> <span class="t">DemoSchema</span> = {
+  actions: <span class="t">ActionCodes</span>;
+  overlays: <span class="s">"hud"</span> | <span class="s">"build"</span>;
+};
+
+<span class="k">const</span> scene: <span class="t">Scene</span>&lt;<span class="t">DemoSchema</span>&gt; = createDemoScene();
+scene.overlays.get(<span class="s">"build"</span>);  <span class="good-line">// ok</span>
+scene.overlays.get(<span class="s">"pause"</span>);  <span class="bad-line">// error</span>`,
+    },
+    brand: {
+      safety: 4,
+      ergo: 4,
+      ext: 5,
+      hints: {
+        safety: "Stops SceneId/EntityId mixups.",
+        ergo: "SceneId(1) is readable; occasional casts at edges.",
+        ext: "Add FlightId etc. in game without engine edits.",
+      },
+      verdict: "Use for opaque handles and map keys that must not be interchangeable numbers/strings.",
+      code: `<span class="k">type</span> <span class="t">SceneId</span> = <span class="t">number</span> &amp; { <span class="k">readonly</span> __brand: <span class="s">"SceneId"</span> };
+<span class="k">type</span> <span class="t">EntityId</span> = <span class="t">number</span> &amp; { <span class="k">readonly</span> __brand: <span class="s">"EntityId"</span> };
+
+<span class="k">function</span> switchTo(id: <span class="t">SceneId</span>): <span class="t">void</span>;
+
+<span class="k">const</span> scene = SceneId(1);
+<span class="k">const</span> plane = EntityId(1);
+
+switchTo(scene); <span class="good-line">// ok</span>
+switchTo(plane); <span class="bad-line">// type error — different brand</span>`,
+    },
+    ports: {
+      safety: 5,
+      ergo: 4,
+      ext: 5,
+      hints: {
+        safety: "Methods + args are checked; results can be typed.",
+        ergo: "deps.commands.placeBuilding(...) autocompletes.",
+        ext: "Game extends the port; engine depends on a wide interface.",
+      },
+      verdict: "Preferred controller → domain path. Commands in, events out (optional) for fan-in reactions.",
+      code: `<span class="k">interface</span> <span class="t">DomainCommands</span> {
+  setSimSpeed(mult: <span class="t">number</span>): <span class="t">void</span>;
+}
+
+<span class="k">interface</span> <span class="t">AeroCommands</span> <span class="k">extends</span> <span class="t">DomainCommands</span> {
+  placeBuilding(i: { kind: <span class="s">"gate"</span> | <span class="s">"shop"</span>; cell: <span class="t">Cell</span> }): <span class="t">Result</span>;
+}
+
+<span class="k">class</span> <span class="t">BuildController</span> {
+  <span class="k">constructor</span>(<span class="k">private</span> cmds: <span class="t">AeroCommands</span>) {}
+  update() {
+    <span class="k">this</span>.cmds.placeBuilding({ kind: <span class="s">"gate"</span>, cell });
+  }
+}
+
+<span class="c">// createDemoScene({ commands: session.commands })</span>`,
+    },
+    augment: {
+      safety: 4,
+      ergo: 2,
+      ext: 5,
+      hints: {
+        safety: "Global interface merge — easy to get wrong paths.",
+        ergo: "Invisible coupling; poor local reasoning.",
+        ext: "Plugins can contribute keys without imports.",
+      },
+      verdict: "Plugin ecosystems only. For Aero-the-game, registries beat augmentation.",
+      code: `<span class="c">// engine</span>
+<span class="k">export interface</span> <span class="t">ActionBag</span> {}
+<span class="k">export type</span> <span class="t">AnyAction</span> = <span class="k">keyof</span> <span class="t">ActionBag</span> &amp; <span class="t">string</span>;
+
+<span class="c">// game — ambient merge</span>
+<span class="k">declare module</span> <span class="s">"aero/engine"</span> {
+  <span class="k">interface</span> <span class="t">ActionBag</span> {
+    ZOOM_IN: <span class="t">true</span>;
+    PAUSE: <span class="t">true</span>;
+  }
+}
+
+<span class="c">// Now AnyAction includes game keys — but tracing is harder</span>`,
+    },
+  };
+
+  function renderBars(el, n, tone) {
+    el.innerHTML = "";
+    for (let i = 1; i <= 5; i++) {
+      const tick = document.createElement("i");
+      if (i <= n) {
+        tick.classList.add("on");
+        if (tone) tick.classList.add(tone);
+      }
+      el.appendChild(tick);
+    }
+  }
+
+  const root = document.querySelector('[data-lab="explorer"]');
+  const codeEl = root.querySelector("[data-code]");
+  const verdictEl = root.querySelector("[data-verdict]");
+  const buttons = root.querySelectorAll("[data-approaches] button");
+
+  function show(id) {
+    const a = approaches[id];
+    codeEl.innerHTML = a.code;
+    verdictEl.innerHTML = `<strong>When to use:</strong> ${a.verdict}`;
+    renderBars(root.querySelector('[data-bar="safety"]'), a.safety, "good");
+    renderBars(root.querySelector('[data-bar="ergo"]'), a.ergo, "warm");
+    renderBars(root.querySelector('[data-bar="ext"]'), a.ext);
+    root.querySelector('[data-hint="safety"]').textContent = a.hints.safety;
+    root.querySelector('[data-hint="ergo"]').textContent = a.hints.ergo;
+    root.querySelector('[data-hint="ext"]').textContent = a.hints.ext;
+    buttons.forEach((b) => b.classList.toggle("on", b.dataset.id === id));
+  }
+
+  buttons.forEach((b) => b.addEventListener("click", () => show(b.dataset.id)));
+  show("stringly");
+})();
+
+(function () {
+  const items = [
+    {
+      t: "Game needs ZOOM_IN / PAUSE / BUILD with autocomplete on input.isActive",
+      why: "Vocabulary as a const registry + keyof typeof keeps one source of truth and extends without engine edits.",
+      options: [
+        { id: "satisfies", label: "satisfies + keyof" },
+        { id: "augment", label: "module augmentation" },
+        { id: "stringly", label: "string params" },
+      ],
+      a: "satisfies",
+    },
+    {
+      t: "createInput(Action) should return a manager typed to those exact action keys",
+      why: "Generic inference at the factory is how registry keys flow into engine surfaces.",
+      options: [
+        { id: "generic", label: "generic + infer keyof R" },
+        { id: "brand", label: "branded string ids" },
+        { id: "stringly", label: "return InputManager" },
+      ],
+      a: "generic",
+    },
+    {
+      t: "switchTo must not accept an EntityId even though both are numbers",
+      why: "Brands make opaque handles incompatible without runtime cost.",
+      options: [
+        { id: "brand", label: "branded ids" },
+        { id: "schema", label: "scene schema phantom" },
+        { id: "ports", label: "command port" },
+      ],
+      a: "brand",
+    },
+    {
+      t: "BuildModeController should place buildings and get Result back from domain",
+      why: "Typed command methods beat string events for requests that need validation results.",
+      options: [
+        { id: "ports", label: "typed command port" },
+        { id: "augment", label: "augment ActionBag" },
+        { id: "stringly", label: "bus.emit('place')" },
+      ],
+      a: "ports",
+    },
+    {
+      t: "overlays Map keys must be 'hud' | 'build' and actions must stay ActionCodes together",
+      why: "A schema phantom threads one vocabulary across multiple scene fields when they must stay aligned.",
+      options: [
+        { id: "schema", label: "Scene&lt;Schema&gt; phantom" },
+        { id: "brand", label: "brand every overlay name" },
+        { id: "stringly", label: "Map&lt;string, Overlay&gt;" },
+      ],
+      a: "schema",
+    },
+    {
+      t: "Third-party workshop plugins each contribute action names without importing your game module",
+      why: "Augmentation shines for open plugin ecosystems — overkill for a single game folder.",
+      options: [
+        { id: "augment", label: "module augmentation" },
+        { id: "satisfies", label: "one game Action object" },
+        { id: "ports", label: "command port only" },
+      ],
+      a: "augment",
+    },
+  ];
+
+  const root = document.querySelector('[data-lab="quiz"]');
+  const itemEl = root.querySelector("[data-quiz-item]");
+  const actionsEl = root.querySelector("[data-quiz-actions]");
+  const fb = root.querySelector("[data-quiz-feedback]");
+  const prog = root.querySelector("[data-quiz-progress]");
+  let i = 0;
+  let correct = 0;
+
+  function render() {
+    const item = items[i];
+    itemEl.innerHTML = `${item.t}<small>Pick the best fit for Aero-style engines.</small>`;
+    actionsEl.innerHTML = "";
+    item.options.forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = opt.label;
+      btn.addEventListener("click", () => answer(opt.id));
+      actionsEl.appendChild(btn);
+    });
+    fb.textContent = "Choose an approach.";
+    fb.className = "quiz-feedback";
+    prog.innerHTML = `Question <em>${i + 1}</em> / ${items.length} · score <em>${correct}</em>`;
+  }
+
+  function answer(id) {
+    const item = items[i];
+    const ok = id === item.a;
+    if (ok) correct += 1;
+    fb.className = "quiz-feedback " + (ok ? "right" : "wrong");
+    fb.innerHTML = ok
+      ? `<strong>Yes.</strong> ${item.why}`
+      : `<strong>Not the best fit.</strong> ${item.why}`;
+    prog.innerHTML = `Question <em>${i + 1}</em> / ${items.length} · score <em>${correct}</em>`;
+    window.setTimeout(() => {
+      i = (i + 1) % items.length;
+      if (i === 0) correct = 0;
+      render();
+    }, ok ? 1600 : 2200);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
