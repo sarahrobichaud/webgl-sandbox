@@ -11,7 +11,7 @@ const scenes = [
   buildDemoScene(),
 ];
 
-const game = Instance.initialize(
+const instance = Instance.initialize(
   {
     renderer: "web-gl",
     parentElement: appElement,
@@ -19,4 +19,4 @@ const game = Instance.initialize(
   scenes,
 );
 
-game.start();
+instance.start();

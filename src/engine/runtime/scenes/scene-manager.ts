@@ -20,6 +20,5 @@ export class InternalSceneManager implements SceneManager {
 
   registerScene(scene: Scene): void {
     this.#scenes.set(scene.id, scene);
-    throw new Error("Method not implemented.");
   }
 }

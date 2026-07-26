@@ -1,5 +1,5 @@
-import type { ActionRegistry } from "../engine/contracts/input/actions.contract";
-import { KeyboardButton } from "../engine/contracts/input/button.contract";
+import type { ActionRegistry } from "../../engine/contracts/input/actions.contract";
+import { KeyboardButton } from "../../engine/contracts/input/button.contract";
 
 export const Action = {
   ZOOM_IN: {

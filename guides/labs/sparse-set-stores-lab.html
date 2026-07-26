@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sparse-Set Stores Lab — ECS storage you can hold in your head</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #12151d;
+    --bg-elev: #1a1f2a;
+    --bg-plot: #0b0e13;
+    --ink: #e8ecf3;
+    --muted: #95a0b4;
+    --faint: #3c4658;
+    --line: #2b3342;
+    --accent: #8eb4e8;
+    --accent2: #e8a45c;
+    --good: #7dcca0;
+    --warn: #e0b85c;
+    --bad: #e07a7a;
+    --radius: 10px;
+    --pad: clamp(1rem, 3vw, 2rem);
+    --max: 50rem;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 55% 38% at 100% 0%, #1a2438 0%, transparent 52%),
+      radial-gradient(ellipse 45% 32% at 0% 18%, #1a2a28 0%, transparent 48%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 1.06rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: var(--pad); padding-bottom: 5rem; }
+
+  header.hero {
+    padding: 2rem 0 1.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.55rem;
+  }
+  h1 {
+    font-family: Syne, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.85rem, 5vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.8rem;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 42rem; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .meta { margin-top: 1.1rem; display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+  }
+  .pill em { color: var(--accent); font-style: normal; }
+
+  nav.toc { margin: 1.6rem 0 0; display: grid; gap: 0.28rem; }
+  nav.toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    border-left: 2px solid var(--faint);
+    padding: 0.12rem 0 0.12rem 0.65rem;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+
+  section { margin: 2.85rem 0; scroll-margin-top: 1.2rem; }
+  h2 {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.55rem;
+  }
+  h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.88rem;
+    color: var(--accent);
+    margin: 1.35rem 0 0.45rem;
+    letter-spacing: 0.02em;
+  }
+  .num { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--accent); margin-right: 0.35rem; }
+  p { color: var(--muted); margin: 0 0 0.85rem; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  ul, ol { color: var(--muted); padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+
+  code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.84em;
+    background: #0a0c10;
+    padding: 0.08em 0.32em;
+    border-radius: 4px;
+    color: #c5d0e0;
+  }
+
+  .note {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 0.95rem;
+    margin: 1rem 0 1.15rem;
+    color: var(--muted);
+    font-size: 0.96rem;
+  }
+  .note.warn { border-left-color: var(--warn); }
+  .note.bad { border-left-color: var(--bad); }
+  .note.good { border-left-color: var(--good); }
+  .note strong { color: var(--ink); }
+
+  .lab {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1.05rem 0;
+  }
+  .lab-head {
+    padding: 0.7rem 0.95rem;
+    border-bottom: 1px solid var(--line);
+    background: rgba(0,0,0,0.22);
+  }
+  .lab-title {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.55rem;
+  }
+  .toggle-row, .btn-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .toggle-row button, .btn-row button, .entity-pick button {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.32rem 0.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .toggle-row button.on, .entity-pick button.on {
+    border-color: var(--accent);
+    background: #16233a;
+    color: var(--accent);
+  }
+  .btn-row button.danger:hover { border-color: var(--bad); color: var(--bad); }
+  .btn-row button.primary.on,
+  .btn-row button.primary { border-color: var(--accent2); color: var(--accent2); }
+
+  pre.code {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    background: var(--bg-plot);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: #c5d0e0;
+    white-space: pre;
+  }
+  pre.code .c { color: #5c6b82; }
+  pre.code .k { color: #8eb4e8; }
+  pre.code .t { color: #7dcca0; }
+  pre.code .s { color: #e8a45c; }
+  pre.code .bad-line { color: #e07a7a; }
+  pre.code .good-line { color: #7dcca0; }
+  pre.code.block {
+    margin: 1rem 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .cols { display: grid; grid-template-columns: 1fr; gap: 0.55rem; margin: 1rem 0; }
+  @media (min-width: 36rem) { .cols.two { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.8rem 0.95rem;
+  }
+  .card h3 { margin-top: 0; }
+  .card p { margin: 0 0 0.4rem; font-size: 0.9rem; }
+  .card p:last-child { margin: 0; }
+  .card ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; }
+
+  .decide {
+    background: #15243a;
+    border: 1px solid #2a3f5a;
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1.2rem 0;
+  }
+  .decide h3 {
+    font-family: Syne, sans-serif;
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+  .decide p { margin: 0 0 0.5rem; }
+  .decide p:last-child { margin: 0; }
+
+  .flow {
+    display: grid;
+    gap: 0.35rem;
+    margin: 1rem 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+  }
+  .flow .row {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    gap: 0.55rem;
+    align-items: start;
+  }
+  .flow .who { color: var(--accent); padding-top: 0.15rem; }
+  .flow .what {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    color: var(--muted);
+  }
+  .flow .what strong { color: var(--ink); }
+
+  .store-viz {
+    padding: 0.85rem 0.95rem;
+    background: var(--bg-plot);
+    display: grid;
+    gap: 0.85rem;
+  }
+  .array-block h4 {
+    margin: 0 0 0.4rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    font-weight: 500;
+  }
+  .array-block .sub {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin: -0.2rem 0 0.45rem;
+  }
+  .slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .slot {
+    min-width: 3.6rem;
+    border: 1px solid var(--faint);
+    border-radius: 7px;
+    background: #111722;
+    padding: 0.35rem 0.4rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  }
+  .slot .idx {
+    display: block;
+    color: var(--faint);
+    font-size: 0.6rem;
+    margin-bottom: 0.15rem;
+  }
+  .slot .val { color: var(--ink); font-size: 0.78rem; }
+  .slot.empty { opacity: 0.45; border-style: dashed; }
+  .slot.hot {
+    border-color: var(--accent);
+    background: #16233a;
+    color: var(--accent);
+  }
+  .slot.hot .val { color: var(--accent); }
+  .slot.moved {
+    border-color: var(--accent2);
+    background: #2a2114;
+  }
+  .slot.moved .val { color: var(--accent2); }
+  .slot.gone {
+    border-color: var(--bad);
+    opacity: 0.35;
+  }
+  .arrow-row {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    padding: 0.1rem 0;
+  }
+  .arrow-row em { color: var(--accent); font-style: normal; }
+
+  .controls-grid {
+    display: grid;
+    gap: 0.65rem;
+  }
+  .controls-grid .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.85rem;
+    align-items: center;
+  }
+  .controls-grid label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .controls-grid select,
+  .controls-grid input {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    min-width: 6rem;
+  }
+
+  .log {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    color: var(--muted);
+    padding: 0.55rem 0.95rem;
+    border-top: 1px solid var(--line);
+    line-height: 1.55;
+    min-height: 2.6rem;
+  }
+  .log em { color: var(--accent2); font-style: normal; }
+  .log .ok { color: var(--good); }
+  .log .err { color: var(--bad); }
+
+  .join-grid {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.85rem 0.95rem;
+    background: var(--bg-plot);
+  }
+  .join-col h4 {
+    margin: 0 0 0.35rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .chip {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    border: 1px solid var(--faint);
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    color: var(--muted);
+    background: #111722;
+  }
+  .chip.match { border-color: var(--good); color: var(--good); background: #14241c; }
+  .chip.miss { opacity: 0.45; }
+
+  .stepper { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.55rem; }
+  .stepper button {
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 6px;
+    padding: 0.32rem 0.55rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+  .stepper button.on { border-color: var(--accent); color: var(--accent); background: #16233a; }
+
+  .quiz-item {
+    font-size: 1.02rem;
+    color: var(--ink);
+    padding: 0.4rem 0.95rem 0.5rem;
+  }
+  .quiz-item small { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 0.25rem; }
+  .quiz-actions { display: flex; gap: 0.5rem; padding: 0 0.95rem 0.7rem; flex-wrap: wrap; }
+  .quiz-actions button {
+    flex: 1;
+    min-width: 8rem;
+    background: var(--bg-plot);
+    color: var(--ink);
+    border: 1px solid var(--faint);
+    border-radius: 7px;
+    padding: 0.5rem 0.55rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    cursor: pointer;
+  }
+  .quiz-actions button:hover { border-color: var(--accent); }
+  .quiz-feedback {
+    padding: 0.7rem 0.95rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.92rem;
+    color: var(--muted);
+    min-height: 2.6rem;
+  }
+  .quiz-feedback.right { color: var(--good); }
+  .quiz-feedback.wrong { color: var(--bad); }
+  .quiz-feedback strong { color: var(--ink); }
+  .quiz-progress {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    padding: 0 0.95rem 0.75rem;
+  }
+  .quiz-progress em { color: var(--accent); font-style: normal; }
+
+  table.cheat {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 1rem 0;
+  }
+  table.cheat th, table.cheat td {
+    border: 1px solid var(--line);
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    color: var(--muted);
+    vertical-align: top;
+  }
+  table.cheat th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: var(--bg-elev);
+  }
+  table.cheat td strong { color: var(--ink); }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  footer a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Concepts · interactive · ~25–35 min</p>
+  <h1>Sparse-Set Stores</h1>
+  <p class="lede">
+    A sparse set is the storage trick behind most practical ECS worlds in TypeScript:
+    <strong>entity ids stay sparse and scattered</strong>, while the component values sit in a
+    <strong>packed dense array</strong> you can loop without gaps. This lab builds that
+    intuition with a live store you can poke.
+  </p>
+  <div class="meta">
+    <span class="pill"><em>ops:</em> add · get · remove · iterate</span>
+    <span class="pill"><em>key idea:</em> id → dense index</span>
+    <span class="pill"><em>pair with:</em> ECS Approaches lab</span>
+  </div>
+
+  <nav class="toc">
+    <a href="#problem">1 · The problem it solves</a>
+    <a href="#anatomy">2 · Anatomy: sparse + dense</a>
+    <a href="#playground">3 · Live store playground</a>
+    <a href="#remove">4 · Swap-remove (the clever bit)</a>
+    <a href="#join">5 · Joining two stores</a>
+    <a href="#code">6 · A complete TypeScript Store</a>
+    <a href="#pitfalls">7 · Pitfalls &amp; upgrades</a>
+    <a href="#quiz">8 · Check your mental model</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="problem">
+  <h2><span class="num">01</span> The problem it solves</h2>
+  <p>
+    In ECS, an entity is just an id — say <code>7</code>, <code>42</code>, <code>108</code>.
+    Components live <em>elsewhere</em>. You need three things to be cheap:
+  </p>
+  <ol>
+    <li><strong>Does entity 42 have Velocity?</strong> → <code>has(42)</code></li>
+    <li><strong>Give me that Velocity.</strong> → <code>get(42)</code></li>
+    <li><strong>Update every Velocity.</strong> → iterate without scanning empty holes</li>
+  </ol>
+
+  <div class="cols two">
+    <div class="card">
+      <h3>Naïve: array indexed by entity id</h3>
+      <p><code>velocities[42] = {…}</code></p>
+      <p>Lookup is O(1), but if ids go to 100_000 and only 200 have velocity, you waste a huge sparse array and iteration is painful.</p>
+    </div>
+    <div class="card">
+      <h3>Naïve: scan every entity bag</h3>
+      <p><code>for (e of allEntities) if (e.velocity)</code></p>
+      <p>Iteration “works,” but you pay for entities that don’t have the component — every system, every frame.</p>
+    </div>
+  </div>
+
+  <div class="note good">
+    <strong>Sparse set promise:</strong> lookup stays O(1), and iteration only touches entities that
+    <em>actually have</em> the component — packed tightly in a dense array.
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="anatomy">
+  <h2><span class="num">02</span> Anatomy: sparse + dense</h2>
+  <p>
+    One <code>Store&lt;T&gt;</code> per component type. Inside it, two cooperating structures:
+  </p>
+
+  <div class="flow">
+    <div class="row">
+      <div class="who">sparse</div>
+      <div class="what">
+        Map (or array) from <strong>entity id → dense index</strong>.
+        “Where in the packed list does entity 7 live?”
+      </div>
+    </div>
+    <div class="row">
+      <div class="who">dense</div>
+      <div class="what">
+        Packed array of <strong>component values</strong> (no holes).
+        Index <code>i</code> is the i-th entity that has this component.
+      </div>
+    </div>
+    <div class="row">
+      <div class="who">entities</div>
+      <div class="what">
+        Parallel to dense: <code>entities[i]</code> is the entity id that owns <code>dense[i]</code>.
+        Needed so iteration can report “who,” and so remove can fix the sparse map.
+      </div>
+    </div>
+  </div>
+
+  <div class="lab" data-lab="anatomy">
+    <div class="lab-head">
+      <div class="lab-title">Static snapshot — Position store</div>
+      <div class="stepper" data-anatomy-steps>
+        <button type="button" data-step="0" class="on">0 · empty</button>
+        <button type="button" data-step="1">1 · add e3</button>
+        <button type="button" data-step="2">2 · add e7</button>
+        <button type="button" data-step="3">3 · add e1</button>
+        <button type="button" data-step="4">4 · get(7)</button>
+      </div>
+    </div>
+    <div class="store-viz" data-anatomy-viz></div>
+    <div class="log" data-anatomy-log></div>
+  </div>
+
+  <div class="note">
+    <strong>Read a lookup out loud:</strong>
+    <code>get(7)</code> → <code>sparse.get(7)</code> returns dense index <code>1</code>
+    → return <code>dense[1]</code>. No scanning.
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="playground">
+  <h2><span class="num">03</span> Live store playground</h2>
+  <p>
+    Add and remove Velocity on a handful of planes. Watch how <em>sparse</em> and <em>dense</em>
+    stay in sync. Dense should never have gaps while the store is valid.
+  </p>
+
+  <div class="lab" data-lab="playground">
+    <div class="lab-head">
+      <div class="lab-title">Velocity store</div>
+      <div class="controls-grid">
+        <div class="row">
+          <label>entity
+            <select data-pg-entity>
+              <option value="1">1 · Plane A</option>
+              <option value="3">3 · Plane B</option>
+              <option value="5">5 · Gate (no vel usually)</option>
+              <option value="7">7 · Plane C</option>
+              <option value="9">9 · Plane D</option>
+            </select>
+          </label>
+          <label>vx
+            <input type="number" data-pg-vx value="1" step="0.5" />
+          </label>
+          <label>vy
+            <input type="number" data-pg-vy value="0" step="0.5" />
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="button" data-pg-add class="primary">add / set</button>
+          <button type="button" data-pg-get>get</button>
+          <button type="button" data-pg-has>has?</button>
+          <button type="button" data-pg-remove class="danger">remove</button>
+          <button type="button" data-pg-clear>clear store</button>
+        </div>
+      </div>
+    </div>
+    <div class="store-viz" data-pg-viz></div>
+    <div class="log" data-pg-log>Pick an entity and press <em>add / set</em>.</div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="remove">
+  <h2><span class="num">04</span> Swap-remove (the clever bit)</h2>
+  <p>
+    Deleting from the middle of a packed array would leave a hole — unless you
+    <strong>swap the last element into the hole</strong>, then pop. That keeps dense packed
+    and stays O(1).
+  </p>
+
+  <div class="lab" data-lab="swap">
+    <div class="lab-head">
+      <div class="lab-title">Watch remove(3) on a full store</div>
+      <div class="stepper" data-swap-steps>
+        <button type="button" data-step="0" class="on">0 · before</button>
+        <button type="button" data-step="1">1 · find index of e3</button>
+        <button type="button" data-step="2">2 · swap last → hole</button>
+        <button type="button" data-step="3">3 · pop + fix sparse</button>
+      </div>
+    </div>
+    <div class="store-viz" data-swap-viz></div>
+    <div class="log" data-swap-log></div>
+  </div>
+
+  <pre class="code block"><span class="k">remove</span>(id: <span class="t">EntityId</span>) {
+  <span class="k">const</span> index = <span class="k">this</span>.sparse.get(id);
+  <span class="k">if</span> (index === <span class="k">undefined</span>) <span class="k">return</span>;
+
+  <span class="k">const</span> last = <span class="k">this</span>.dense.length - 1;
+  <span class="k">const</span> lastId = <span class="k">this</span>.entities[last];
+
+  <span class="c">// move last into the hole</span>
+  <span class="k">this</span>.dense[index] = <span class="k">this</span>.dense[last];
+  <span class="k">this</span>.entities[index] = lastId;
+  <span class="k">this</span>.sparse.set(lastId, index); <span class="good-line">// last entity’s dense index changed</span>
+
+  <span class="k">this</span>.dense.pop();
+  <span class="k">this</span>.entities.pop();
+  <span class="k">this</span>.sparse.delete(id);
+}</pre>
+
+  <div class="note warn">
+    <strong>Don’t hold dense indices across frames.</strong> After a remove, some other entity’s
+    index may have moved. Always go through <code>sparse.get(id)</code> (or <code>get(id)</code>).
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="join">
+  <h2><span class="num">05</span> Joining two stores</h2>
+  <p>
+    A movement system needs <em>both</em> Position and Velocity. Sparse sets don’t give you a
+    free “table of matching rows” — you <strong>iterate the smaller store</strong> and probe the other.
+  </p>
+
+  <div class="lab" data-lab="join">
+    <div class="lab-head">
+      <div class="lab-title">Query: Position ∩ Velocity</div>
+      <div class="btn-row">
+        <button type="button" data-join-seed>reset demo data</button>
+        <button type="button" data-join-run class="primary">run join (iterate Velocity)</button>
+      </div>
+    </div>
+    <div class="join-grid">
+      <div class="join-col">
+        <h4>Position store entities</h4>
+        <div class="chip-list" data-join-pos></div>
+      </div>
+      <div class="join-col">
+        <h4>Velocity store entities</h4>
+        <div class="chip-list" data-join-vel></div>
+      </div>
+      <div class="join-col">
+        <h4>Match set (both)</h4>
+        <div class="chip-list" data-join-match></div>
+      </div>
+    </div>
+    <pre class="code" data-join-code></pre>
+    <div class="log" data-join-log>Press <em>run join</em> to walk Velocity and probe Position.</div>
+  </div>
+
+  <div class="note">
+    <strong>Rule of thumb:</strong> iterate the rarer component. If 2000 entities have Position
+    but only 80 have Velocity, loop Velocity and <code>positions.get(id)</code>.
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="code">
+  <h2><span class="num">06</span> A complete TypeScript <code>Store</code></h2>
+  <p>
+    This is a teaching implementation — enough for a game world, clear enough to memorize.
+    In JS, <code>Map</code> for sparse is fine; engines sometimes use a big <code>Uint32Array</code> instead.
+  </p>
+
+  <pre class="code block"><span class="k">type</span> <span class="t">EntityId</span> = <span class="t">number</span>;
+
+<span class="k">class</span> <span class="t">Store</span>&lt;<span class="t">T</span>&gt; {
+  dense: <span class="t">T</span>[] = [];
+  entities: <span class="t">EntityId</span>[] = [];
+  sparse = <span class="k">new</span> Map&lt;<span class="t">EntityId</span>, <span class="t">number</span>&gt;();
+
+  get size() { <span class="k">return</span> <span class="k">this</span>.dense.length; }
+
+  has(id: <span class="t">EntityId</span>): <span class="t">boolean</span> {
+    <span class="k">return</span> <span class="k">this</span>.sparse.has(id);
+  }
+
+  get(id: <span class="t">EntityId</span>): <span class="t">T</span> | <span class="k">undefined</span> {
+    <span class="k">const</span> i = <span class="k">this</span>.sparse.get(id);
+    <span class="k">return</span> i === <span class="k">undefined</span> ? <span class="k">undefined</span> : <span class="k">this</span>.dense[i];
+  }
+
+  set(id: <span class="t">EntityId</span>, value: <span class="t">T</span>): <span class="t">void</span> {
+    <span class="k">const</span> existing = <span class="k">this</span>.sparse.get(id);
+    <span class="k">if</span> (existing !== <span class="k">undefined</span>) {
+      <span class="k">this</span>.dense[existing] = value; <span class="c">// overwrite in place</span>
+      <span class="k">return</span>;
+    }
+    <span class="k">const</span> index = <span class="k">this</span>.dense.length;
+    <span class="k">this</span>.dense.push(value);
+    <span class="k">this</span>.entities.push(id);
+    <span class="k">this</span>.sparse.set(id, index);
+  }
+
+  remove(id: <span class="t">EntityId</span>): <span class="t">void</span> {
+    <span class="k">const</span> index = <span class="k">this</span>.sparse.get(id);
+    <span class="k">if</span> (index === <span class="k">undefined</span>) <span class="k">return</span>;
+
+    <span class="k">const</span> last = <span class="k">this</span>.dense.length - 1;
+    <span class="k">if</span> (index !== last) {
+      <span class="k">const</span> lastId = <span class="k">this</span>.entities[last];
+      <span class="k">this</span>.dense[index] = <span class="k">this</span>.dense[last];
+      <span class="k">this</span>.entities[index] = lastId;
+      <span class="k">this</span>.sparse.set(lastId, index);
+    }
+    <span class="k">this</span>.dense.pop();
+    <span class="k">this</span>.entities.pop();
+    <span class="k">this</span>.sparse.delete(id);
+  }
+
+  <span class="c">/** Packed iteration — no holes */</span>
+  *entries(): IterableIterator&lt;[<span class="t">EntityId</span>, <span class="t">T</span>]&gt; {
+    <span class="k">for</span> (<span class="k">let</span> i = 0; i &lt; <span class="k">this</span>.dense.length; i++) {
+      <span class="k">yield</span> [<span class="k">this</span>.entities[i], <span class="k">this</span>.dense[i]];
+    }
+  }
+}</pre>
+
+  <h3>World = several stores</h3>
+  <pre class="code block"><span class="k">class</span> <span class="t">World</span> {
+  positions = <span class="k">new</span> <span class="t">Store</span>&lt;{ x: <span class="t">number</span>; y: <span class="t">number</span> }&gt;();
+  velocities = <span class="k">new</span> <span class="t">Store</span>&lt;{ x: <span class="t">number</span>; y: <span class="t">number</span> }&gt;();
+  <span class="c">// boarding, meshRef, …</span>
+}
+
+<span class="k">function</span> movementSystem(world: <span class="t">World</span>, dt: <span class="t">number</span>) {
+  <span class="k">for</span> (<span class="k">const</span> [id, v] <span class="k">of</span> world.velocities.entries()) {
+    <span class="k">const</span> p = world.positions.get(id);
+    <span class="k">if</span> (!p) <span class="k">continue</span>;
+    p.x += v.x * dt;
+    p.y += v.y * dt;
+  }
+}</pre>
+</section>
+
+<!-- 7 -->
+<section id="pitfalls">
+  <h2><span class="num">07</span> Pitfalls &amp; upgrades</h2>
+
+  <table class="cheat">
+    <thead>
+      <tr><th>Pitfall</th><th>Why it hurts</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Cache a dense index</strong></td>
+        <td>Swap-remove moves someone else into that slot</td>
+        <td>Always resolve via entity id</td>
+      </tr>
+      <tr>
+        <td><strong>Reuse entity ids without generations</strong></td>
+        <td>Stale handles can revive dead entities</td>
+        <td>Brand ids + generation counter (optional later)</td>
+      </tr>
+      <tr>
+        <td><strong>Mutate dense while iterating</strong></td>
+        <td>Remove mid-loop skips / double-visits</td>
+        <td>Command buffer: queue removes, apply after systems</td>
+      </tr>
+      <tr>
+        <td><strong>One giant store of mixed stuff</strong></td>
+        <td>You’re back to entity bags</td>
+        <td>One store per component type</td>
+      </tr>
+      <tr>
+        <td><strong>Expect archetype-level locality</strong></td>
+        <td>Values are still JS objects on the heap</td>
+        <td>Good enough until typed arrays / archetypes are profiled needs</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="decide">
+    <h3>When you’re ready to upgrade</h3>
+    <p>
+      <strong>Array sparse instead of Map:</strong> if entity ids are small dense integers,
+      <code>sparse: number[]</code> (sentinel = empty) can beat <code>Map</code> lookups.
+    </p>
+    <p>
+      <strong>Generational ids:</strong> <code>EntityId = (index | generation &lt;&lt; 16)</code>
+      so destroyed entities can’t be confused with recycled slots.
+    </p>
+    <p>
+      <strong>Query helpers:</strong> wrap joins in <code>world.query(Position, Velocity)</code>
+      so systems don’t hand-roll the iterate/probe pattern.
+    </p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="quiz">
+  <h2><span class="num">08</span> Check your mental model</h2>
+
+  <div class="lab" data-lab="quiz">
+    <div class="lab-head">
+      <div class="lab-title">Sparse-set quiz</div>
+    </div>
+    <div class="quiz-item" data-quiz-item>…</div>
+    <div class="quiz-actions" data-quiz-actions></div>
+    <div class="quiz-feedback" data-quiz-feedback>Choose an answer.</div>
+    <div class="quiz-progress" data-quiz-progress></div>
+  </div>
+</section>
+
+<footer>
+  Guides · labs ·
+  <a href="./ecs-approaches-lab.html">ECS Approaches</a> ·
+  <a href="./runtime-vs-domain-lab.html">Runtime vs Domain</a>
+</footer>
+
+</div>
+
+<script>
+/** Tiny Store used by all interactive bits */
+function createStore() {
+  return {
+    dense: [],
+    entities: [],
+    sparse: new Map(),
+    has(id) { return this.sparse.has(id); },
+    get(id) {
+      const i = this.sparse.get(id);
+      return i === undefined ? undefined : this.dense[i];
+    },
+    set(id, value) {
+      const existing = this.sparse.get(id);
+      if (existing !== undefined) {
+        this.dense[existing] = value;
+        return;
+      }
+      const index = this.dense.length;
+      this.dense.push(value);
+      this.entities.push(id);
+      this.sparse.set(id, index);
+    },
+    remove(id) {
+      const index = this.sparse.get(id);
+      if (index === undefined) return;
+      const last = this.dense.length - 1;
+      if (index !== last) {
+        const lastId = this.entities[last];
+        this.dense[index] = this.dense[last];
+        this.entities[index] = lastId;
+        this.sparse.set(lastId, index);
+      }
+      this.dense.pop();
+      this.entities.pop();
+      this.sparse.delete(id);
+    },
+    clear() {
+      this.dense = [];
+      this.entities = [];
+      this.sparse = new Map();
+    },
+  };
+}
+
+function fmtVal(v) {
+  if (v == null) return "—";
+  if (typeof v === "object" && "x" in v) return `${v.x},${v.y}`;
+  return String(v);
+}
+
+function renderStoreViz(el, store, opts = {}) {
+  const {
+    hotIds = new Set(),
+    movedIds = new Set(),
+    sparseMax = 10,
+    titleDense = "dense (packed values)",
+    titleEntities = "entities (parallel to dense)",
+    titleSparse = "sparse (entity id → dense index)",
+  } = opts;
+
+  const denseSlots = store.dense.length
+    ? store.dense.map((v, i) => {
+        const id = store.entities[i];
+        let cls = "slot";
+        if (hotIds.has(id)) cls += " hot";
+        if (movedIds.has(id)) cls += " moved";
+        return `<div class="${cls}"><span class="idx">[${i}]</span><span class="val">e${id}: ${fmtVal(v)}</span></div>`;
+      }).join("")
+    : `<div class="slot empty"><span class="idx">[ ]</span><span class="val">empty</span></div>`;
+
+  const entitySlots = store.entities.length
+    ? store.entities.map((id, i) => {
+        let cls = "slot";
+        if (hotIds.has(id)) cls += " hot";
+        if (movedIds.has(id)) cls += " moved";
+        return `<div class="${cls}"><span class="idx">[${i}]</span><span class="val">e${id}</span></div>`;
+      }).join("")
+    : `<div class="slot empty"><span class="idx">[ ]</span><span class="val">empty</span></div>`;
+
+  const sparseSlots = [];
+  for (let id = 0; id < sparseMax; id++) {
+    const idx = store.sparse.get(id);
+    const present = idx !== undefined;
+    let cls = "slot" + (present ? "" : " empty");
+    if (hotIds.has(id)) cls += " hot";
+    if (movedIds.has(id)) cls += " moved";
+    sparseSlots.push(
+      `<div class="${cls}"><span class="idx">id ${id}</span><span class="val">${present ? "→ " + idx : "—"}</span></div>`
+    );
+  }
+
+  el.innerHTML = `
+    <div class="array-block">
+      <h4>${titleSparse}</h4>
+      <div class="sub">lookup path: id → index</div>
+      <div class="slots">${sparseSlots.join("")}</div>
+    </div>
+    <div class="arrow-row">maps into ↓ packed slots · size = <em>${store.dense.length}</em></div>
+    <div class="array-block">
+      <h4>${titleDense}</h4>
+      <div class="sub">iteration path: walk 0 … size-1</div>
+      <div class="slots">${denseSlots}</div>
+    </div>
+    <div class="array-block">
+      <h4>${titleEntities}</h4>
+      <div class="sub">entities[i] owns dense[i]</div>
+      <div class="slots">${entitySlots}</div>
+    </div>
+  `;
+}
+
+/* ---- Anatomy stepper ---- */
+(function () {
+  const steps = [
+    {
+      build(s) {},
+      hot: [],
+      log: "Store starts empty. sparse has no keys; dense length is 0.",
+    },
+    {
+      build(s) { s.set(3, { x: 10, y: 0 }); },
+      hot: [3],
+      log: "add(3): push to dense[0], entities[0]=3, sparse[3]=0.",
+    },
+    {
+      build(s) { s.set(3, { x: 10, y: 0 }); s.set(7, { x: 4, y: 2 }); },
+      hot: [7],
+      log: "add(7): append — dense[1], sparse[7]=1. Order is insertion order, not entity id order.",
+    },
+    {
+      build(s) {
+        s.set(3, { x: 10, y: 0 });
+        s.set(7, { x: 4, y: 2 });
+        s.set(1, { x: 0, y: 1 });
+      },
+      hot: [1],
+      log: "add(1): append again. Entity ids are sparse; dense stays packed 0,1,2.",
+    },
+    {
+      build(s) {
+        s.set(3, { x: 10, y: 0 });
+        s.set(7, { x: 4, y: 2 });
+        s.set(1, { x: 0, y: 1 });
+      },
+      hot: [7],
+      log: "get(7): sparse.get(7) → 1 → dense[1] = {x:4,y:2}. O(1), no scan.",
+    },
+  ];
+
+  const root = document.querySelector('[data-lab="anatomy"]');
+  const viz = root.querySelector("[data-anatomy-viz]");
+  const log = root.querySelector("[data-anatomy-log]");
+  const buttons = root.querySelectorAll("[data-anatomy-steps] button");
+
+  function show(step) {
+    const s = createStore();
+    const cfg = steps[step];
+    cfg.build(s);
+    renderStoreViz(viz, s, { hotIds: new Set(cfg.hot), sparseMax: 10 });
+    log.innerHTML = cfg.log;
+    buttons.forEach((b) => b.classList.toggle("on", Number(b.dataset.step) === step));
+  }
+
+  buttons.forEach((b) => b.addEventListener("click", () => show(Number(b.dataset.step))));
+  show(0);
+})();
+
+/* ---- Playground ---- */
+(function () {
+  const root = document.querySelector('[data-lab="playground"]');
+  const viz = root.querySelector("[data-pg-viz]");
+  const log = root.querySelector("[data-pg-log]");
+  const store = createStore();
+  let lastHot = new Set();
+  let lastMoved = new Set();
+
+  function paint(msg, opts = {}) {
+    if (opts.hot) lastHot = new Set(opts.hot);
+    if (opts.moved) lastMoved = new Set(opts.moved);
+    if (opts.clearMarks) { lastHot = new Set(); lastMoved = new Set(); }
+    renderStoreViz(viz, store, { hotIds: lastHot, movedIds: lastMoved, sparseMax: 10 });
+    if (msg) log.innerHTML = msg;
+  }
+
+  function selectedId() {
+    return Number(root.querySelector("[data-pg-entity]").value);
+  }
+  function selectedVel() {
+    return {
+      x: Number(root.querySelector("[data-pg-vx]").value),
+      y: Number(root.querySelector("[data-pg-vy]").value),
+    };
+  }
+
+  root.querySelector("[data-pg-add]").addEventListener("click", () => {
+    const id = selectedId();
+    const had = store.has(id);
+    store.set(id, selectedVel());
+    paint(
+      had
+        ? `set(<em>${id}</em>): overwrote dense[sparse[${id}]] in place.`
+        : `add(<em>${id}</em>): sparse[${id}] = <em>${store.sparse.get(id)}</em>, value packed at end.`,
+      { hot: [id], moved: [] }
+    );
+  });
+
+  root.querySelector("[data-pg-get]").addEventListener("click", () => {
+    const id = selectedId();
+    const v = store.get(id);
+    if (v === undefined) {
+      paint(`get(<em>${id}</em>): <span class="err">undefined</span> — not in sparse map.`, { hot: [id] });
+    } else {
+      paint(
+        `get(<em>${id}</em>): sparse → <em>${store.sparse.get(id)}</em> → dense value <em>{x:${v.x}, y:${v.y}}</em>.`,
+        { hot: [id] }
+      );
+    }
+  });
+
+  root.querySelector("[data-pg-has]").addEventListener("click", () => {
+    const id = selectedId();
+    const ok = store.has(id);
+    paint(
+      `has(<em>${id}</em>): <span class="${ok ? "ok" : "err"}">${ok}</span>`,
+      { hot: [id] }
+    );
+  });
+
+  root.querySelector("[data-pg-remove]").addEventListener("click", () => {
+    const id = selectedId();
+    if (!store.has(id)) {
+      paint(`remove(<em>${id}</em>): nothing to do.`, { hot: [id] });
+      return;
+    }
+    const index = store.sparse.get(id);
+    const lastId = store.entities[store.entities.length - 1];
+    const moved = index !== store.dense.length - 1 ? [lastId] : [];
+    store.remove(id);
+    paint(
+      moved.length
+        ? `remove(<em>${id}</em>): swapped <em>e${moved[0]}</em> into hole, then popped. sparse[e${moved[0]}] updated.`
+        : `remove(<em>${id}</em>): it was last — just pop. No swap needed.`,
+      { hot: [id], moved }
+    );
+  });
+
+  root.querySelector("[data-pg-clear]").addEventListener("click", () => {
+    store.clear();
+    paint("Store cleared.", { clearMarks: true });
+  });
+
+  paint("Pick an entity and press <em>add / set</em>.", { clearMarks: true });
+})();
+
+/* ---- Swap-remove stepper ---- */
+(function () {
+  function filled() {
+    const s = createStore();
+    s.set(3, { x: 1, y: 0 });
+    s.set(7, { x: 2, y: 0 });
+    s.set(1, { x: 3, y: 0 });
+    s.set(9, { x: 4, y: 0 });
+    return s;
+  }
+
+  const steps = [
+    {
+      store() { return filled(); },
+      hot: [],
+      moved: [],
+      log: "Before: dense holds e3, e7, e1, e9. We want to remove e3 (index 0).",
+    },
+    {
+      store() { return filled(); },
+      hot: [3],
+      moved: [],
+      log: "sparse.get(3) → 0. That’s the hole we’ll fill.",
+    },
+    {
+      store() {
+        const s = filled();
+        // visualize mid-swap: copy last into index 0, but keep length (teaching frame)
+        const last = s.dense.length - 1;
+        s.dense[0] = s.dense[last];
+        s.entities[0] = s.entities[last];
+        // sparse temporarily wrong for teaching — show moved state before pop
+        s.sparse.set(9, 0);
+        return s;
+      },
+      hot: [3],
+      moved: [9],
+      log: "Copy last (e9) into index 0. e9 now lives at dense[0] — update sparse[9]=0. (Old e3 data overwritten.)",
+    },
+    {
+      store() {
+        const s = filled();
+        s.remove(3);
+        return s;
+      },
+      hot: [],
+      moved: [9],
+      log: "Pop the duplicate last slot. sparse.delete(3). Dense is packed again: e9, e7, e1.",
+    },
+  ];
+
+  const root = document.querySelector('[data-lab="swap"]');
+  const viz = root.querySelector("[data-swap-viz]");
+  const log = root.querySelector("[data-swap-log]");
+  const buttons = root.querySelectorAll("[data-swap-steps] button");
+
+  function show(step) {
+    const cfg = steps[step];
+    renderStoreViz(viz, cfg.store(), {
+      hotIds: new Set(cfg.hot),
+      movedIds: new Set(cfg.moved),
+      sparseMax: 10,
+    });
+    log.innerHTML = cfg.log;
+    buttons.forEach((b) => b.classList.toggle("on", Number(b.dataset.step) === step));
+  }
+
+  buttons.forEach((b) => b.addEventListener("click", () => show(Number(b.dataset.step))));
+  show(0);
+})();
+
+/* ---- Join demo ---- */
+(function () {
+  const root = document.querySelector('[data-lab="join"]');
+  const posStore = createStore();
+  const velStore = createStore();
+  const codeEl = root.querySelector("[data-join-code]");
+  const log = root.querySelector("[data-join-log]");
+
+  function seed() {
+    posStore.clear();
+    velStore.clear();
+    // positions: 1,3,5,7,9
+    [1, 3, 5, 7, 9].forEach((id, i) => posStore.set(id, { x: i, y: 0 }));
+    // velocities: only planes 1,7,9
+    velStore.set(1, { x: 1, y: 0 });
+    velStore.set(7, { x: 0.5, y: 0.1 });
+    velStore.set(9, { x: -0.2, y: 0 });
+    paintChips([]);
+    codeEl.innerHTML = `<span class="c">// waiting to run…</span>`;
+    log.innerHTML = "Demo data ready: Position has 5 entities, Velocity has 3. Gate <em>e5</em> has no velocity.";
+  }
+
+  function chips(el, ids, matchSet) {
+    el.innerHTML = ids.map((id) => {
+      let cls = "chip";
+      if (matchSet) {
+        cls += matchSet.has(id) ? " match" : " miss";
+      }
+      return `<span class="${cls}">e${id}</span>`;
+    }).join("") || `<span class="chip miss">none</span>`;
+  }
+
+  function paintChips(matches) {
+    const matchSet = new Set(matches);
+    chips(root.querySelector("[data-join-pos]"), posStore.entities.slice(), matchSet);
+    chips(root.querySelector("[data-join-vel]"), velStore.entities.slice(), matchSet);
+    chips(root.querySelector("[data-join-match]"), matches, matchSet);
+  }
+
+  root.querySelector("[data-join-seed]").addEventListener("click", seed);
+
+  root.querySelector("[data-join-run]").addEventListener("click", () => {
+    const matches = [];
+    const lines = [
+      `<span class="c">// iterate the smaller store (Velocity), probe Position</span>`,
+      `<span class="k">for</span> (<span class="k">const</span> [id, v] <span class="k">of</span> velocities.entries()) {`,
+    ];
+    for (let i = 0; i < velStore.dense.length; i++) {
+      const id = velStore.entities[i];
+      const p = posStore.get(id);
+      if (p) {
+        matches.push(id);
+        lines.push(`  <span class="c">// id ${id}: has Position ✓ — include in query</span>`);
+        lines.push(`  positions.get(${id}); <span class="good-line">// hit</span>`);
+      } else {
+        lines.push(`  <span class="c">// id ${id}: no Position — skip</span>`);
+        lines.push(`  positions.get(${id}); <span class="bad-line">// undefined</span>`);
+      }
+    }
+    lines.push(`}`);
+    codeEl.innerHTML = lines.join("\n");
+    paintChips(matches);
+    log.innerHTML = `Join result: <em>${matches.map((id) => "e" + id).join(", ")}</em> — ${matches.length} entities to integrate this frame.`;
+  });
+
+  codeEl.innerHTML = `<span class="c">// press “run join”</span>`;
+  seed();
+})();
+
+/* ---- Quiz ---- */
+(function () {
+  const items = [
+    {
+      t: "What does the sparse map store?",
+      why: "Sparse maps entity id → index into the dense (packed) array — that’s the O(1) lookup.",
+      options: [
+        { id: "idx", label: "entity id → dense index" },
+        { id: "val", label: "entity id → component value" },
+        { id: "list", label: "a list of all entity ids" },
+      ],
+      a: "idx",
+    },
+    {
+      t: "Why keep a parallel entities[] next to dense[]?",
+      why: "Iteration needs to know which entity owns dense[i], and remove must update that entity’s sparse entry after a swap.",
+      options: [
+        { id: "own", label: "know who owns dense[i] + fix sparse on swap" },
+        { id: "sort", label: "keep entities sorted by id" },
+        { id: "render", label: "only for the renderer" },
+      ],
+      a: "own",
+    },
+    {
+      t: "You remove a component from the middle of dense. What’s the O(1) trick?",
+      why: "Swap the last packed element into the hole, update that entity’s sparse index, then pop.",
+      options: [
+        { id: "swap", label: "swap-last into the hole, then pop" },
+        { id: "shift", label: "shift all later elements left" },
+        { id: "null", label: "leave a null hole and skip it" },
+      ],
+      a: "swap",
+    },
+    {
+      t: "After remove(), you still have an old dense index cached from last frame. Safe?",
+      why: "No — swap-remove may have moved another entity into that slot. Always re-resolve via entity id.",
+      options: [
+        { id: "no", label: "No — indices can move" },
+        { id: "yes", label: "Yes — indices are stable" },
+        { id: "maybe", label: "Only if you removed the last element" },
+      ],
+      a: "no",
+    },
+    {
+      t: "Position has 5000 entries, Velocity has 120. How should movement join them?",
+      why: "Iterate the smaller store (Velocity) and probe Position.has/get — fewer random lookups.",
+      options: [
+        { id: "vel", label: "iterate Velocity, probe Position" },
+        { id: "pos", label: "iterate Position, probe Velocity" },
+        { id: "all", label: "scan every entity in the world" },
+      ],
+      a: "vel",
+    },
+    {
+      t: "Best first World shape for Aero’s simulation?",
+      why: "One Store per component type, systems iterate/join stores. Scene graph stays a projection.",
+      options: [
+        { id: "stores", label: "World of sparse-set Stores" },
+        { id: "oop", label: "Plane extends MovableEntity" },
+        { id: "one", label: "One array indexed by entity id forever" },
+      ],
+      a: "stores",
+    },
+  ];
+
+  const root = document.querySelector('[data-lab="quiz"]');
+  const itemEl = root.querySelector("[data-quiz-item]");
+  const actionsEl = root.querySelector("[data-quiz-actions]");
+  const fb = root.querySelector("[data-quiz-feedback]");
+  const prog = root.querySelector("[data-quiz-progress]");
+  let i = 0;
+  let correct = 0;
+
+  function render() {
+    const item = items[i];
+    itemEl.innerHTML = `${item.t}<small>One best answer.</small>`;
+    actionsEl.innerHTML = "";
+    item.options.forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = opt.label;
+      btn.addEventListener("click", () => answer(opt.id));
+      actionsEl.appendChild(btn);
+    });
+    fb.textContent = "Choose an answer.";
+    fb.className = "quiz-feedback";
+    prog.innerHTML = `Question <em>${i + 1}</em> / ${items.length} · score <em>${correct}</em>`;
+  }
+
+  function answer(id) {
+    const item = items[i];
+    const ok = id === item.a;
+    if (ok) correct++;
+    fb.className = "quiz-feedback " + (ok ? "right" : "wrong");
+    fb.innerHTML = ok
+      ? `<strong>Yes.</strong> ${item.why}`
+      : `<strong>Not quite.</strong> ${item.why}`;
+    Array.from(actionsEl.querySelectorAll("button")).forEach((b) => { b.disabled = true; });
+    setTimeout(() => {
+      i++;
+      if (i >= items.length) {
+        itemEl.innerHTML = `Done.<small>Score <em style="color:var(--accent);font-style:normal">${correct}</em> / ${items.length}.</small>`;
+        actionsEl.innerHTML = "";
+        fb.textContent = "Mental model: sparse finds the slot; dense is what you iterate; swap-remove keeps dense packed.";
+        fb.className = "quiz-feedback";
+        prog.innerHTML = `Finished · score <em>${correct}</em> / ${items.length}`;
+        return;
+      }
+      render();
+    }, 1500);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
