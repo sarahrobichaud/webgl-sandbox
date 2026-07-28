@@ -1,3 +1,4 @@
+import type { SceneId } from "./contracts/branded-values";
 import type { Mesh } from "./contracts/geometry/geometry.contract";
 import type { RendererBackend, Runtime, Session, System } from "./contracts/internal";
 import type { RendererType } from "./contracts/rendering/renderer.contract";
@@ -26,7 +27,7 @@ function createRenderer(backend: RendererBackend) {
   return new SceneRenderer(backend);
 }
 
-export class Instance implements System {
+export class AeroSystem implements System {
   #session: Session;
   #runtime: Runtime;
 
@@ -44,11 +45,15 @@ export class Instance implements System {
     const renderer = createRenderer(backend);
     const runtime = new SystemRuntime(session, renderer, config.parentElement);
 
-    return new Instance(session, runtime, scenes);
+    return new AeroSystem(session, runtime, scenes);
   }
 
   registerMeshes(meshes: Mesh[]) {
     this.#runtime.init(meshes);
+  }
+
+  mountScene(id: SceneId) {
+    return this.#runtime.setActiveScene(id);
   }
 
   start(): void {

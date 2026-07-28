@@ -1,48 +1,71 @@
 import { SceneId } from "../contracts/branded-values";
 import type { Mesh } from "../contracts/geometry/geometry.contract";
 import type { Renderer, Runtime, SceneManager, Session } from "../contracts/internal";
-import type { Scene } from "../contracts/scene/scene.contract";
-import { InternalSceneManager } from "./scenes/scene-manager";
+import type { MountedScene, Scene } from "../contracts/scene/scene.contract";
+import { InputHub } from "./input/input-manager";
+import { Presenter } from "./scenes/presenter";
 
 export class SystemRuntime implements Runtime {
-  #sceneManager: SceneManager;
+  #presenter: SceneManager;
   #renderer: Renderer;
   #session: Session;
-  #canvas: HTMLCanvasElement;
+  #suspend = false;
 
   constructor(session: Session, renderer: Renderer, canvas: HTMLCanvasElement) {
     this.#session = session;
     this.#renderer = renderer;
-    this.#sceneManager = new InternalSceneManager(canvas);
-    this.#canvas = canvas;
+    this.#presenter = new Presenter(canvas);
   }
 
   setActiveScene(id: SceneId) {
-    return this.#sceneManager.switchTo(id);
+    this.#presenter.mount(id);
+    this.#suspend = false;
   }
 
   loadScenes(scenes: Scene[]): void {
-    scenes.forEach((s) => this.#sceneManager.registerScene(s));
+    scenes.forEach((s) => this.#presenter.registerScene(s));
   }
   init(meshes: Mesh[]): void {
     this.#renderer.loadAssets(meshes);
   }
 
-  loop(lastTimeMs: number = 0) {
-    this.#update();
-    this.#draw();
-    window.requestAnimationFrame(this.loop.bind(this));
+  #getLoadedScene() {
+    const currentScene = this.#presenter.current;
+
+    if (!this.#session.activeWorld) {
+      throw new Error("No world loaded!");
+    }
+
+    if (!currentScene) {
+      throw new Error("No scene loaded!");
+    }
+    return currentScene;
   }
 
-  #update() {}
-
-  #draw() {
-    const active = this.#sceneManager.active;
-
-    if (!this.#session.activeWorld || !active) {
+  loop(lastTimeMs: number = 0) {
+    this.#renderer.startFrame();
+    if (this.#suspend) {
+      window.requestAnimationFrame(this.loop.bind(this));
       return;
     }
 
-    this.#renderer.render(active.scene, this.#session.activeWorld, active.camera);
+    try {
+      const currentScene = this.#getLoadedScene();
+      this.#update(currentScene);
+      this.#draw(currentScene);
+    } catch (e) {
+      console.warn(e);
+      this.#suspend = true;
+    }
+
+    window.requestAnimationFrame(this.loop.bind(this));
+  }
+
+  #update(scene: MountedScene) {
+    scene.updateView({ input: new InputHub(), camera: scene.camera });
+  }
+
+  #draw(scene: MountedScene) {
+    this.#renderer.render(scene);
   }
 }

@@ -1,7 +1,6 @@
 import type { Camera, CameraConfigurationKind } from "../../contracts/rendering/camera.contract";
 import type { View } from "../../contracts/scene/scene.contract";
 import { BasicCamera } from "../rendering/camera/basic-camera";
-import type { Scene } from "./overlay";
 
 function createCamera(config: CameraConfigurationKind, canvas: HTMLCanvasElement): Camera {
   switch (config.type) {
@@ -18,37 +17,22 @@ function createCamera(config: CameraConfigurationKind, canvas: HTMLCanvasElement
 }
 
 export class ViewManager {
-  #views: Map<string, View> = new Map();
-  #cameras: Map<string, Camera> = new Map();
-  #activeView: string | null = null;
-
+  #camera: Camera | null = null;
   #canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
     this.#canvas = canvas;
   }
 
-  loadFromScene(views: Map<string, View>) {
-    this.#views = views;
-    this.#buildCameras(views);
+  get camera() {
+    if (!this.#camera) {
+      throw new Error("No view loaded");
+    }
+
+    return this.#camera;
   }
 
-  getActiveCamera() {
-    if (!this.#activeView) {
-      return null;
-    }
-    const camera = this.#cameras.get(this.#activeView);
-
-    return camera ?? null;
-  }
-
-  #buildCameras(views: Map<string, View>) {
-    this.#cameras = new Map();
-    for (const [
-      key, view,
-    ] of views) {
-      this.#cameras.set(key, createCamera(view.setupCamera(), this.#canvas));
-      this.#activeView = key;
-    }
+  loadFromScene(view: View) {
+    this.#camera = createCamera(view.getCamera(), this.#canvas);
   }
 }

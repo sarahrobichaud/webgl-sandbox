@@ -1,5 +1,6 @@
+import { SceneId } from "./engine/contracts/branded-values";
 import { MESHES } from "./engine/runtime/rendering/geometry/mesh";
-import { Instance } from "./engine/system";
+import { AeroSystem } from "./engine/system";
 import { buildDemoScene } from "./game/scenes/demo/demo.scene";
 import { DemoSimulation } from "./game/simulation/demo-simulation";
 import { LocalWorld } from "./game/world/game-world";
@@ -18,11 +19,7 @@ const simulations = [
   new DemoSimulation(),
 ];
 
-const meshes = [
-  MESHES.plane, MESHES.cube, MESHES.pyramid,
-];
-
-const instance = Instance.initialize(
+const instance = AeroSystem.initialize(
   {
     renderer: "web-gl",
     parentElement: appElement,
@@ -38,8 +35,6 @@ instance.registerMeshes([
 ]);
 
 instance.session.loadWorld(world);
-
-instance.runtime.setActiveScene(scenes[0].id);
-console.log(instance.session.activeWorld);
+instance.mountScene(SceneId(1));
 
 instance.start();

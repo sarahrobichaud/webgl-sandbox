@@ -4,7 +4,7 @@ import type { SceneId } from "./branded-values";
 import type { World } from "./data/world.contract";
 import type { Mesh } from "./geometry/geometry.contract";
 import type { Camera } from "./rendering/camera.contract";
-import type { Scene } from "./scene/scene.contract";
+import type { MountedScene, Scene, SceneRenderContext } from "./scene/scene.contract";
 import type { Position, SpacialData } from "./spatial/spatial.contract";
 
 export interface SceneSchema {
@@ -29,8 +29,8 @@ export interface Runtime {
 }
 
 export interface SceneManager {
-  active: { scene: Scene; camera: Camera } | null;
-  switchTo(id: SceneId): void;
+  current: MountedScene | null;
+  mount(id: SceneId): void;
   registerScene(scene: Scene): void;
 }
 
@@ -55,8 +55,9 @@ export interface InputManager<Action extends string> extends InputMonitor {
 export interface Scheduler {}
 
 export interface Renderer {
+  startFrame(): void;
   loadAssets(meshes: Mesh[]): void;
-  render(scene: Scene, world: World, camera: Camera): void;
+  render(context: SceneRenderContext): void;
 }
 
 export interface RendererBackend {

@@ -16,8 +16,7 @@ export interface ViewContext {
 }
 
 export interface View {
-  setupCamera(): CameraConfigurationKind;
-  onInit(): void;
+  getCamera(): CameraConfigurationKind;
   onUpdate(context: ViewContext): void;
 }
 
@@ -31,14 +30,20 @@ export interface SceneController {
   update(context: ControllerContext): void;
 }
 
+export interface SceneRenderContext {
+  camera: Camera;
+}
+
 /**
  * Scene
  */
 
 export interface Scene {
   id: SceneId;
-  overlays: Map<string, Overlay>;
-  views: Map<string, View>;
-  controllers: Map<string, SceneController>;
-  onLoad(): void;
+  view: View;
+}
+
+export interface MountedScene {
+  updateView({ camera, input }: ViewContext): void;
+  camera: Camera;
 }

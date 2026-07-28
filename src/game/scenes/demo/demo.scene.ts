@@ -7,13 +7,6 @@ export function buildDemoScene(): Scene {
 
   return {
     id: SceneId(1),
-    views: new Map([
-      [
-        "view-1", view,
-      ],
-    ]),
-    overlays: new Map(),
-    controllers: new Map(),
-    onLoad() {},
+    view: view,
   };
 }
