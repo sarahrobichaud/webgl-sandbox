@@ -17,6 +17,7 @@ export interface ViewContext {
 
 export interface View {
   setupCamera(): CameraConfigurationKind;
+  onInit(): void;
   onUpdate(context: ViewContext): void;
 }
 

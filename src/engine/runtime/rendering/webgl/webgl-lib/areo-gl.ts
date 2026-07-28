@@ -1,5 +1,6 @@
+import type { Mesh } from "../../../../contracts/geometry/geometry.contract";
+import type { Program, Shaders } from "../../../../contracts/rendering/renderer.contract";
 import { isBuiltIn } from "../webgl-utils";
-import type { AreoProgram, Mesh, ShaderPair } from "./areo-types";
 
 const ACTIVE_ATTRIBUTES = 0x8b89;
 const ACTIVE_UNIFORMS = 0x8b86;
@@ -20,7 +21,7 @@ export class AreoGL {
    * @param shaders - The shaders to link
    * @returns the program
    */
-  createProgram(name: string, shaders: ShaderPair) {
+  createProgram(name: string, shaders: Shaders) {
     const vShader = this.#createShader(this.#c.VERTEX_SHADER, shaders.vertex);
     const fShader = this.#createShader(this.#c.FRAGMENT_SHADER, shaders.fragment);
 
@@ -46,7 +47,7 @@ export class AreoGL {
    * @param program - The program
    * @param meshes - All meshes
    */
-  loadGeometry(program: AreoProgram, meshes: Mesh[]) {
+  loadGeometry(program: Program, meshes: Mesh[]) {
     for (const mesh of meshes) {
       const vao = this.#c.createVertexArray();
       this.#c.bindVertexArray(vao);
@@ -64,7 +65,7 @@ export class AreoGL {
   /*
    * PRIVATE
    */
-  #createProgramInfo(name: string, program: WebGLProgram): AreoProgram {
+  #createProgramInfo(name: string, program: WebGLProgram): Program {
     return {
       name,
       program,

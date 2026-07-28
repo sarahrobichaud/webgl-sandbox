@@ -2,24 +2,22 @@ import { canvasToDisplaySizeMap, measureElement } from "../canvas/canvas-utils";
 import { shaders } from "./shaders/basic-shader";
 import { mat4, vec3 } from "gl-matrix";
 import { AreoGL } from "./webgl-lib/areo-gl";
-import type { AreoProgram, LoadedMesh, Mesh } from "./webgl-lib/areo-types";
-import type { Viewport } from "../types";
 import { gridShaders } from "./shaders/grid-shader";
 import { MESHES } from "../geometry/mesh";
-import type { Camera } from "../../../contracts/rendering/camera.contract";
 import type { Position, SpacialData } from "../../../contracts/spatial/spatial.contract";
 import type { RendererBackend } from "../../../contracts/internal";
+import type { LoadedMesh, Program, Viewport } from "../../../contracts/rendering/renderer.contract";
+import type { Mesh } from "../../../contracts/geometry/geometry.contract";
 
 export class WebGlRenderer implements RendererBackend {
   #viewport: Viewport = { size: { height: 0, width: 0 } };
   #gl: WebGL2RenderingContext;
   #canvas: HTMLCanvasElement;
 
-  #programs: Record<string, AreoProgram> = {};
+  #programs: Record<string, Program> = {};
   #aero: AreoGL;
 
   #gridMesh = MESHES.plane;
-  #camera: Camera | null = null;
 
   constructor(parentElement: HTMLCanvasElement) {
     this.#gl = parentElement.getContext("webgl2")!;
@@ -37,14 +35,6 @@ export class WebGlRenderer implements RendererBackend {
 
     const observer = new ResizeObserver(resizeCallback);
     this.#watchResize(observer);
-  }
-
-  setCamera(camera: Camera) {
-    this.#camera = camera;
-  }
-
-  get hasCamera() {
-    return this.#camera !== null;
   }
 
   get viewport() {
@@ -84,12 +74,12 @@ export class WebGlRenderer implements RendererBackend {
   }
 
   // Floor: unit XZ plane; scaleX/scaleZ = tiles across (see grid-system.md)
-  #position = { x: 0, y: 0, z: 0 };
+  #position = { x: 2, y: 2, z: 2 };
   #transform = {
     scale: {
-      x: 0,
-      y: 0,
-      z: 0,
+      x: 100,
+      y: 100,
+      z: 100,
     },
     rotation: {
       x: 0,
@@ -103,7 +93,7 @@ export class WebGlRenderer implements RendererBackend {
     },
   };
 
-  renderGrid() {
+  renderGrid(viewProjection: mat4) {
     this.#gl.useProgram(this.#programs.grid.program);
 
     if (!this.#gridMesh.r_vao) {
@@ -114,7 +104,7 @@ export class WebGlRenderer implements RendererBackend {
 
     // Grid needs the real world matrix for v_worldPos — not the normal matrix
     // (transpose(inverse(world))) that basic uses for lighting.
-    const { worldViewProjection, world } = this.#computeDynamicUniforms(this.#position, this.#transform);
+    const { worldViewProjection, world } = this.#computeDynamicUniforms(viewProjection, this.#position, this.#transform);
 
     const uni = this.#programs.grid.sharedUniforms;
 
@@ -129,10 +119,10 @@ export class WebGlRenderer implements RendererBackend {
     this.setStaticUniforms();
   }
 
-  render(mesh: LoadedMesh, position: Position, transform: SpacialData) {
+  render(viewProjection: mat4, mesh: LoadedMesh, position: Position, transform: SpacialData) {
     this.#gl.bindVertexArray(mesh.r_vao);
 
-    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(position, transform, mesh.origin);
+    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(viewProjection, position, transform, mesh.origin);
 
     const uni = this.#programs.basic.sharedUniforms;
 
@@ -169,18 +159,14 @@ export class WebGlRenderer implements RendererBackend {
   }
 
   #computeDynamicUniforms(
+    viewProjection: mat4,
     position: Position,
     transform: SpacialData,
     origin?: [
       number, number, number,
     ],
   ) {
-    if (this.#camera === null) {
-      throw new Error("No camera");
-    }
-
     // Flip to "perspective" when debugging orientations; keep "ortho" for tile work.
-    const viewProjection = this.#camera.getViewPerspective();
     const worldTransforms = this.#computeWorldTransforms(position, transform, origin);
 
     const worldViewProjection = mat4.multiply(mat4.create(), viewProjection, worldTransforms);

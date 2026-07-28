@@ -1,8 +1,8 @@
-import type { EntityId } from "../../../contracts/branded-values";
-import type { World } from "../../../contracts/data/world.contract";
-import type { MotionData } from "../../../contracts/spatial/motion.contract";
-import type { Position, SpacialData } from "../../../contracts/spatial/spatial.contract";
-import { Store } from "../../../lib/store";
+import type { EntityId } from "../../contracts/branded-values";
+import type { World } from "../../contracts/data/world.contract";
+import type { MotionData } from "../../contracts/spatial/motion.contract";
+import type { Position, SpacialData } from "../../contracts/spatial/spatial.contract";
+import { Store } from "../../lib/store";
 
 export class DefaultWorld implements World {
   #positions = new Store<Position>();

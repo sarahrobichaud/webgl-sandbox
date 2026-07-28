@@ -1,4 +1,7 @@
+import type { mat4 } from "gl-matrix";
+import type { Simulation } from "../session/simulation";
 import type { SceneId } from "./branded-values";
+import type { World } from "./data/world.contract";
 import type { Mesh } from "./geometry/geometry.contract";
 import type { Camera } from "./rendering/camera.contract";
 import type { Scene } from "./scene/scene.contract";
@@ -12,13 +15,21 @@ export interface System {
   start(): void;
 }
 
+export interface Session {
+  activeWorld: World | null;
+  simulations: Simulation[];
+  loadWorld(world: World): void;
+}
+
 export interface Runtime {
   loop(lastTimeMs?: number): void;
   loadScenes(scenes: Scene[]): void;
+  setActiveScene(id: SceneId): void;
+  init(meshes: Mesh[]): void;
 }
 
 export interface SceneManager {
-  active: Scene;
+  active: { scene: Scene; camera: Camera } | null;
   switchTo(id: SceneId): void;
   registerScene(scene: Scene): void;
 }
@@ -44,14 +55,14 @@ export interface InputManager<Action extends string> extends InputMonitor {
 export interface Scheduler {}
 
 export interface Renderer {
-  render(): void;
+  loadAssets(meshes: Mesh[]): void;
+  render(scene: Scene, world: World, camera: Camera): void;
 }
 
 export interface RendererBackend {
   clear(): void;
-  render(mesh: Mesh, position: Position, transform: SpacialData): void;
+  render(viewProjection: mat4, mesh: Mesh, position: Position, transform: SpacialData): void;
   init(meshes: Mesh[]): void;
-  setCamera(camera: Camera): void;
   setup(program: "basic"): void;
-  renderGrid(): void;
+  renderGrid(viewProjection: mat4): void;
 }

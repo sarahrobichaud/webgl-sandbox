@@ -1,5 +1,5 @@
 import type { EntityId } from "../../engine/contracts/branded-values";
-import { DefaultWorld } from "../../engine/domain/simulation/world/world";
+import { DefaultWorld } from "../../engine/session/world/world";
 import { Store } from "../../engine/lib/store";
 
 export class LocalWorld extends DefaultWorld {

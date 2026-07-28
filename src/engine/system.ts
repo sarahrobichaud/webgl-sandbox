@@ -1,10 +1,12 @@
-import type { RendererBackend, Runtime, System } from "./contracts/internal";
+import type { Mesh } from "./contracts/geometry/geometry.contract";
+import type { RendererBackend, Runtime, Session, System } from "./contracts/internal";
 import type { RendererType } from "./contracts/rendering/renderer.contract";
 import type { Scene } from "./contracts/scene/scene.contract";
-import { SystemDomain } from "./domain/system-domain";
 import { SceneRenderer } from "./runtime/rendering/renderer";
 import { WebGlRenderer } from "./runtime/rendering/webgl/web-gl-renderer";
 import { SystemRuntime } from "./runtime/system-runtime";
+import { DefaultSession } from "./session/default-session";
+import type { Simulation } from "./session/simulation";
 
 export interface InstanceConfiguration {
   parentElement: HTMLCanvasElement;
@@ -25,27 +27,39 @@ function createRenderer(backend: RendererBackend) {
 }
 
 export class Instance implements System {
-  #domain: SystemDomain;
+  #session: Session;
   #runtime: Runtime;
 
-  constructor(domain: SystemDomain, runtime: Runtime, scenes: Scene[]) {
-    this.#domain = domain;
+  constructor(session: Session, runtime: Runtime, scenes: Scene[]) {
+    this.#session = session;
     this.#runtime = runtime;
 
     this.#runtime.loadScenes(scenes);
   }
 
-  static initialize(config: InstanceConfiguration, scenes: Scene[]) {
+  static initialize(config: InstanceConfiguration, scenes: Scene[], simulations: Simulation[]) {
     const backend = createRendererBackend(config.renderer, config.parentElement);
 
-    const domain = new SystemDomain();
+    const session = new DefaultSession(simulations);
     const renderer = createRenderer(backend);
-    const runtime = new SystemRuntime(renderer);
+    const runtime = new SystemRuntime(session, renderer, config.parentElement);
 
-    return new Instance(domain, runtime, scenes);
+    return new Instance(session, runtime, scenes);
+  }
+
+  registerMeshes(meshes: Mesh[]) {
+    this.#runtime.init(meshes);
   }
 
   start(): void {
     this.#runtime.loop();
+  }
+
+  get runtime() {
+    return this.#runtime;
+  }
+
+  get session() {
+    return this.#session;
   }
 }
