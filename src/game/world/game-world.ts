@@ -1,12 +1,19 @@
 import type { EntityId } from "../../engine/contracts/branded-values";
 import { DefaultWorld } from "../../engine/session/world/world";
-import { Store } from "../../engine/lib/store";
+import { ASSET_CATALOG, type CatalogKey } from "../assets/catalog";
 
 export class LocalWorld extends DefaultWorld {
-  #test = new Store<{ test: number }>();
+  constructor() {
+    super();
+    const id = this.spawn();
+
+    this.visibles.set(id, {
+      isVisible: true,
+      assetKey: ASSET_CATALOG.cube,
+    });
+  }
 
   override destroy(id: EntityId): void {
-    this.#test.remove(id);
     super.destroy(id);
   }
 }

@@ -1,7 +1,9 @@
+import type { AssetCatalog } from "../contracts/assets/assets.contract";
 import { SceneId } from "../contracts/branded-values";
 import type { Mesh } from "../contracts/geometry/geometry.contract";
 import type { Renderer, Runtime, SceneManager, Session } from "../contracts/internal";
 import type { MountedScene, Scene } from "../contracts/scene/scene.contract";
+import { AssetStore } from "./assets/asset-manager";
 import { InputHub } from "./input/input-manager";
 import { Presenter } from "./scenes/presenter";
 
@@ -9,12 +11,14 @@ export class SystemRuntime implements Runtime {
   #presenter: SceneManager;
   #renderer: Renderer;
   #session: Session;
+  #assets: AssetStore;
   #suspend = false;
 
-  constructor(session: Session, renderer: Renderer, canvas: HTMLCanvasElement) {
+  constructor(session: Session, renderer: Renderer, assets: AssetStore, canvas: HTMLCanvasElement) {
     this.#session = session;
     this.#renderer = renderer;
     this.#presenter = new Presenter(canvas);
+    this.#assets = assets;
   }
 
   setActiveScene(id: SceneId) {
@@ -22,13 +26,14 @@ export class SystemRuntime implements Runtime {
     this.#suspend = false;
   }
 
+  loadAssets(catalog: AssetCatalog): void {
+    this.#assets.load(catalog);
+    this.#renderer.prepareAssets();
+  }
+
   loadScenes(scenes: Scene[]): void {
     scenes.forEach((s) => this.#presenter.registerScene(s));
   }
-  init(meshes: Mesh[]): void {
-    this.#renderer.loadAssets(meshes);
-  }
-
   #getLoadedScene() {
     const currentScene = this.#presenter.current;
 

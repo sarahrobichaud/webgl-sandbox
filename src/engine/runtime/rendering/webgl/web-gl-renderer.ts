@@ -3,11 +3,23 @@ import { shaders } from "./shaders/basic-shader";
 import { mat4, vec3 } from "gl-matrix";
 import { AreoGL } from "./webgl-lib/areo-gl";
 import { gridShaders } from "./shaders/grid-shader";
-import { MESHES } from "../geometry/mesh";
 import type { Position, SpacialData } from "../../../contracts/spatial/spatial.contract";
-import type { RendererBackend } from "../../../contracts/internal";
+import type { FrameRenderingContext, GpuHandle, RendererBackend } from "../../../contracts/internal";
 import type { LoadedMesh, Program, Viewport } from "../../../contracts/rendering/renderer.contract";
 import type { Mesh } from "../../../contracts/geometry/geometry.contract";
+import { MESHES } from "../../../../game/assets/geometry/mesh";
+import type { MeshAssetDescription } from "../../../contracts/assets/assets.contract";
+import type { AssetEntry } from "../../assets/asset-manager";
+import { AssetCache, type GpuAssetCache } from "./gpu-asset-cache";
+
+const VERTEX_LAYOUT = {
+  POSITION: 0,
+  NORMAL: 1,
+};
+
+interface RenderingContext {
+  assets: GpuAssetCache;
+}
 
 export class WebGlRenderer implements RendererBackend {
   #viewport: Viewport = { size: { height: 0, width: 0 } };
@@ -41,18 +53,17 @@ export class WebGlRenderer implements RendererBackend {
     return this.#viewport;
   }
 
+  loadMesh(key: string, description: MeshAssetDescription): GpuHandle {
+    return {
+      vao: this.#aero.loadGeometry(VERTEX_LAYOUT, description.data),
+      key,
+    };
+  }
+
   clear() {
     this.#gl.enable(this.#gl.DEPTH_TEST);
     this.#gl.clearColor(0, 0, 0, 0);
     this.#gl.clear(this.#gl.COLOR_BUFFER_BIT | this.#gl.DEPTH_BUFFER_BIT);
-  }
-
-  init(meshes: Mesh[]): void {
-    // Each program needs its own VAO — attribute locations can differ.
-    this.#aero.loadGeometry(this.#programs.basic, meshes);
-    this.#aero.loadGeometry(this.#programs.grid, [
-      this.#gridMesh,
-    ]);
   }
 
   setStaticUniforms() {
@@ -93,18 +104,16 @@ export class WebGlRenderer implements RendererBackend {
     },
   };
 
-  renderGrid(viewProjection: mat4) {
+  renderGrid(context: FrameRenderingContext) {
     this.#gl.useProgram(this.#programs.grid.program);
 
-    if (!this.#gridMesh.r_vao) {
-      throw new Error("Grid Mesh not loaded");
-    }
+    const vao = context.assets.get("plane").vao;
 
-    this.#gl.bindVertexArray(this.#gridMesh.r_vao);
+    this.#gl.bindVertexArray(vao);
 
     // Grid needs the real world matrix for v_worldPos — not the normal matrix
     // (transpose(inverse(world))) that basic uses for lighting.
-    const { worldViewProjection, world } = this.#computeDynamicUniforms(viewProjection, this.#position, this.#transform);
+    const { worldViewProjection, world } = this.#computeDynamicUniforms(context.viewProjection, this.#position, this.#transform);
 
     const uni = this.#programs.grid.sharedUniforms;
 
@@ -119,17 +128,25 @@ export class WebGlRenderer implements RendererBackend {
     this.setStaticUniforms();
   }
 
-  render(viewProjection: mat4, mesh: LoadedMesh, position: Position, transform: SpacialData) {
-    this.#gl.bindVertexArray(mesh.r_vao);
+  render(context: FrameRenderingContext, mesh: string, position: Position, transform: SpacialData) {
+    const vao = context.assets.get(mesh).vao;
+    this.#gl.bindVertexArray(vao);
 
-    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(viewProjection, position, transform, mesh.origin);
+    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(
+      context.viewProjection,
+      position,
+      transform,
+      [
+        0, 0, 0,
+      ],
+    );
 
     const uni = this.#programs.basic.sharedUniforms;
 
     this.#gl.uniformMatrix4fv(uni.u_worldViewProjection.location, false, worldViewProjection);
     this.#gl.uniformMatrix4fv(uni.u_world.location, false, transposedInvertedWorldTransforms);
 
-    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, mesh.vertices.length / 3);
+    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 36 / 3);
   }
 
   #computeWorldTransforms(

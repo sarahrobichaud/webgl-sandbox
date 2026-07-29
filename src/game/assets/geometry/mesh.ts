@@ -6,9 +6,8 @@
  * - Size in the world comes only from the entity/floor transform scale.
  */
 
-import type { Mesh } from "../../../contracts/geometry/geometry.contract";
+import type { Mesh } from "../../../engine/contracts/geometry/geometry.contract";
 
-// Unit cube [-0.5, 0.5]. Each face is two triangles, wound CCW from outside.
 // prettier-ignore
 const CUBE_VERTICES = [
   // Front (+Z)
@@ -106,7 +105,6 @@ const CUBE_NORMALS = [
 ];
 
 export const CUBE_MESH: Mesh = {
-  r_id: "cube",
   vertices: CUBE_VERTICES,
   normals: CUBE_NORMALS,
   origin: [
@@ -169,7 +167,6 @@ const PYRAMID_NORMALS = [
 ];
 
 export const PYRAMID_MESH: Mesh = {
-  r_id: "pyramid",
   vertices: PYRAMID_VERTICES,
   normals: PYRAMID_NORMALS,
   origin: [
@@ -199,7 +196,6 @@ const PLANE_NORMALS = [
 ];
 
 export const PLANE_MESH: Mesh = {
-  r_id: "plane",
   vertices: PLANE_VERTICES,
   normals: PLANE_NORMALS,
 };

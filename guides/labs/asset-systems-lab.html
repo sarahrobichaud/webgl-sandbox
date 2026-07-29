@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Asset Systems Lab — catalogs, handles, and WebGL residency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #12151d;
+    --bg-elev: #1a1f2a;
+    --bg-plot: #0b0e13;
+    --ink: #e8ecf3;
+    --muted: #95a0b4;
+    --faint: #3c4658;
+    --line: #2b3342;
+    --accent: #8eb4e8;
+    --accent2: #e8a45c;
+    --good: #7dcca0;
+    --warn: #e0b85c;
+    --bad: #e07a7a;
+    --gpu: #c9a0e8;
+    --cpu: #e8a45c;
+    --radius: 10px;
+    --pad: clamp(1rem, 3vw, 2rem);
+    --max: 50rem;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 55% 40% at 92% 0%, #1a2438 0%, transparent 52%),
+      radial-gradient(ellipse 42% 32% at 0% 22%, #241e28 0%, transparent 48%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 1.06rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: var(--pad); padding-bottom: 5rem; }
+  header.hero { padding: 2rem 0 1.75rem; border-bottom: 1px solid var(--line); margin-bottom: 2rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 0 0 0.55rem;
+  }
+  h1 {
+    font-family: Syne, sans-serif; font-weight: 800;
+    font-size: clamp(1.85rem, 5vw, 2.7rem); line-height: 1.08;
+    letter-spacing: -0.03em; margin: 0 0 0.8rem;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 42rem; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .meta { margin-top: 1.1rem; display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .pill {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; letter-spacing: 0.04em;
+    color: var(--muted); border: 1px solid var(--line); background: var(--bg-elev);
+    border-radius: 999px; padding: 0.28rem 0.65rem;
+  }
+  .pill em { color: var(--accent); font-style: normal; }
+  nav.toc { margin: 1.6rem 0 0; display: grid; gap: 0.28rem; }
+  nav.toc a {
+    color: var(--muted); text-decoration: none; font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem; border-left: 2px solid var(--faint); padding: 0.12rem 0 0.12rem 0.65rem;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+  section { margin: 2.85rem 0; scroll-margin-top: 1.2rem; }
+  h2 {
+    font-family: Syne, sans-serif; font-weight: 700; font-size: 1.4rem;
+    letter-spacing: -0.02em; margin: 0 0 0.55rem;
+  }
+  h3 {
+    font-family: Syne, sans-serif; font-weight: 700; font-size: 1.05rem;
+    margin: 1.35rem 0 0.45rem; color: var(--ink);
+  }
+  .num { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--accent); margin-right: 0.35rem; }
+  p { color: var(--muted); margin: 0 0 0.85rem; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.84em;
+    background: #0a0c10; padding: 0.08em 0.32em; border-radius: 4px; color: #c5d0e0;
+  }
+  pre.code {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; line-height: 1.5;
+    background: var(--bg-plot); border: 1px solid var(--line); border-radius: 8px;
+    padding: 0.85rem 0.95rem; overflow-x: auto; color: #c5d0e0; margin: 0.85rem 0 1rem;
+  }
+  pre.code .c { color: #6a7588; }
+  pre.code .k { color: var(--accent); }
+  pre.code .s { color: var(--good); }
+  pre.code .t { color: var(--gpu); }
+  ul, ol { color: var(--muted); padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--accent2); }
+  .note {
+    background: var(--bg-elev); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: 0.8rem 0.95rem; margin: 1rem 0 1.15rem; color: var(--muted);
+  }
+  .note.good { border-left-color: var(--good); }
+  .note.warn { border-left-color: var(--warn); }
+  .note.gpu { border-left-color: var(--gpu); }
+  .note strong { color: var(--ink); }
+
+  .cols { display: grid; grid-template-columns: 1fr; gap: 0.55rem; margin: 1rem 0; }
+  @media (min-width: 34rem) { .cols.two { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 42rem) { .cols.three { grid-template-columns: 1fr 1fr 1fr; } }
+  .card {
+    background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 0.8rem 0.95rem;
+  }
+  .card h3 {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; margin: 0 0 0.45rem;
+    font-weight: 500;
+  }
+  .card.cpu { border-top: 3px solid var(--cpu); }
+  .card.gpu { border-top: 3px solid var(--gpu); }
+  .card.game { border-top: 3px solid var(--accent2); }
+  .card.engine { border-top: 3px solid var(--accent); }
+  .card.cpu h3 { color: var(--cpu); }
+  .card.gpu h3 { color: var(--gpu); }
+  .card.game h3 { color: var(--accent2); }
+  .card.engine h3 { color: var(--accent); }
+  .card p { margin: 0 0 0.4rem; font-size: 0.9rem; }
+  .card p:last-child { margin: 0; }
+  .card ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; }
+
+  .pipeline { display: grid; gap: 0.4rem; margin: 1rem 0; }
+  .step {
+    background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px;
+    padding: 0.75rem 0.9rem; display: grid; gap: 0.2rem;
+  }
+  .step .who {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .step.cpu .who { color: var(--cpu); }
+  .step.boot .who { color: var(--accent); }
+  .step.gpu .who { color: var(--gpu); }
+  .step.draw .who { color: var(--good); }
+  .step.free .who { color: var(--bad); }
+  .step .what { color: var(--ink); font-size: 0.98rem; }
+  .step .why { color: var(--muted); font-size: 0.88rem; }
+
+  .layers {
+    display: grid; gap: 0.35rem; margin: 1rem 0;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.78rem;
+  }
+  .layers .row {
+    display: grid; grid-template-columns: 7.5rem 1fr; gap: 0.55rem; align-items: start;
+  }
+  .layers .who { color: var(--accent); padding-top: 0.15rem; }
+  .layers .what {
+    background: var(--bg-elev); border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.4rem 0.6rem; color: var(--muted);
+  }
+  .layers .what strong { color: var(--ink); }
+
+  .lab {
+    background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; margin: 1.1rem 0;
+  }
+  .lab-head {
+    padding: 0.75rem 0.95rem; border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: flex-end; justify-content: space-between;
+  }
+  .lab-title { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--ink); }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.65rem 0.95rem; border-bottom: 1px solid var(--line); }
+  .actions button, .toggle-row button, .quiz-actions button {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; cursor: pointer;
+    background: #0f131a; color: var(--muted); border: 1px solid var(--line);
+    border-radius: 6px; padding: 0.35rem 0.55rem;
+  }
+  .actions button { color: var(--ink); }
+  .actions button:hover:not(:disabled) { border-color: var(--accent2); color: var(--accent2); }
+  .actions button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .actions button.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad); }
+  .actions button.primary { border-color: var(--accent); color: var(--accent); }
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .toggle-row button.on { border-color: var(--accent); color: var(--accent); background: #15233a; }
+
+  .board {
+    display: grid; gap: 0.55rem; padding: 0.85rem; border-bottom: 1px solid var(--line);
+  }
+  @media (min-width: 40rem) { .board.two { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 48rem) { .board.three { grid-template-columns: 1fr 1fr 1fr; } }
+  .lane {
+    background: var(--bg-plot); border: 1px solid var(--line); border-radius: 8px; padding: 0.65rem 0.75rem;
+  }
+  .lane h4 {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; margin: 0 0 0.5rem;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .lane.catalog h4 { color: var(--accent2); }
+  .lane.cpu h4 { color: var(--cpu); }
+  .lane.gpu h4 { color: var(--gpu); }
+  .asset {
+    border: 1px solid var(--faint); border-radius: 7px; padding: 0.45rem 0.55rem;
+    margin-bottom: 0.4rem; font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
+    background: #111722; color: var(--muted); transition: border-color 0.15s, background 0.15s;
+  }
+  .asset:last-child { margin-bottom: 0; }
+  .asset .name { color: var(--ink); display: block; margin-bottom: 0.2rem; }
+  .asset .meta-line { color: #6a7588; font-size: 0.66rem; display: block; }
+  .asset.keyed { border-color: #5a4326; }
+  .asset.decoded { border-color: #5a4a2a; }
+  .asset.resident { border-color: #6a4a8a; background: #1a1424; }
+  .asset.resident .name { color: var(--gpu); }
+  .asset.bound { border-color: var(--good); background: #14241c; }
+  .asset.bound .name { color: var(--good); }
+  .asset.leaked { border-color: var(--bad); background: #2a1414; }
+  .asset.leaked .name { color: var(--bad); }
+  .asset.empty {
+    border-style: dashed; opacity: 0.5; text-align: center; color: var(--faint); padding: 0.7rem;
+  }
+
+  .meter {
+    background: #0b0e13; border: 1px solid var(--line); border-radius: 8px; padding: 0.65rem 0.75rem;
+    margin: 0 0.85rem 0.85rem;
+  }
+  .meter h4 {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; margin: 0 0 0.45rem; color: var(--muted);
+  }
+  .bar { height: 10px; background: #2b3342; border-radius: 4px; overflow: hidden; margin-bottom: 0.35rem; }
+  .bar > span { display: block; height: 100%; width: 0%; transition: width 0.2s; }
+  .bar.cpu > span { background: var(--cpu); }
+  .bar.vram > span { background: var(--gpu); }
+  .meter .val { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--ink); }
+
+  .phase-strip {
+    display: flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.55rem 0.95rem; border-bottom: 1px solid var(--line);
+  }
+  .phase-strip .ph {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; letter-spacing: 0.04em;
+    padding: 0.2rem 0.45rem; border-radius: 4px; border: 1px solid var(--faint); color: var(--faint);
+  }
+  .phase-strip .ph.on { color: var(--ink); border-color: var(--accent); background: #15233a; }
+  .phase-strip .ph.done { color: var(--good); border-color: #2a5a40; }
+
+  .log {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; line-height: 1.45;
+    padding: 0.75rem 0.95rem; max-height: 11rem; overflow: auto; background: var(--bg-plot);
+    color: var(--muted);
+  }
+  .log .cpu { color: var(--cpu); }
+  .log .boot { color: var(--accent); }
+  .log .gpu { color: var(--gpu); }
+  .log .draw { color: var(--good); }
+  .log .free { color: var(--bad); }
+  .log .warn { color: var(--warn); }
+  .log .game { color: var(--accent2); }
+
+  .callsite {
+    display: grid; gap: 0.45rem; padding: 0.85rem 0.95rem; border-bottom: 1px solid var(--line);
+  }
+  .callsite .snippet {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; line-height: 1.5;
+    background: var(--bg-plot); border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.65rem 0.75rem; color: #c5d0e0; white-space: pre-wrap;
+  }
+  .callsite .verdict {
+    font-size: 0.9rem; color: var(--muted); padding: 0.35rem 0.1rem 0.15rem;
+  }
+  .callsite .verdict.good { color: var(--good); }
+  .callsite .verdict.bad { color: var(--bad); }
+  .callsite .verdict strong { color: var(--ink); }
+
+  table.cheat { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 1rem 0; }
+  table.cheat th, table.cheat td {
+    border: 1px solid var(--line); padding: 0.5rem 0.65rem; text-align: left; color: var(--muted); vertical-align: top;
+  }
+  table.cheat th {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; color: var(--accent); background: var(--bg-elev);
+  }
+  table.cheat td strong { color: var(--ink); }
+
+  .quiz-item { padding: 1rem 0.95rem; color: var(--ink); font-size: 1.02rem; min-height: 3.2rem; }
+  .quiz-item .hint { display: block; margin-top: 0.35rem; color: var(--muted); font-size: 0.88rem; }
+  .quiz-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0 0.95rem 0.85rem; }
+  .quiz-actions button {
+    font-family: "IBM Plex Sans", sans-serif; font-size: 0.88rem; color: var(--ink); padding: 0.45rem 0.75rem;
+  }
+  .quiz-actions button:hover { border-color: var(--accent); }
+  .quiz-feedback {
+    padding: 0.7rem 0.95rem; border-top: 1px solid var(--line);
+    font-size: 0.92rem; color: var(--muted); min-height: 2.4rem;
+  }
+  .quiz-feedback.right { color: var(--good); }
+  .quiz-feedback.wrong { color: var(--bad); }
+  .quiz-feedback strong { color: var(--ink); }
+  .quiz-progress {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--muted);
+    padding: 0 0.95rem 0.75rem;
+  }
+  .quiz-progress em { color: var(--accent); font-style: normal; }
+
+  .sort-board {
+    display: grid; gap: 0.5rem; padding: 0.85rem; border-bottom: 1px solid var(--line);
+  }
+  @media (min-width: 40rem) { .sort-board { grid-template-columns: 1fr 1fr 1fr; } }
+  .bucket {
+    background: var(--bg-plot); border: 1px solid var(--line); border-radius: 8px;
+    padding: 0.55rem; min-height: 7.5rem;
+  }
+  .bucket h4 {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; margin: 0 0 0.45rem;
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .bucket.catalog h4 { color: var(--accent2); }
+  .bucket.cpu h4 { color: var(--cpu); }
+  .bucket.gpu h4 { color: var(--gpu); }
+  .bucket.over { border-color: var(--accent); }
+  .chip {
+    display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+    background: #111722; border: 1px solid var(--faint); border-radius: 6px;
+    padding: 0.28rem 0.45rem; margin: 0.15rem; cursor: grab; color: var(--ink); user-select: none;
+  }
+  .chip:active { cursor: grabbing; }
+  .chip.selected { border-color: var(--accent); color: var(--accent); }
+  .chip.wrong { border-color: var(--bad); color: var(--bad); }
+  .chip.right { border-color: var(--good); color: var(--good); }
+  .sort-actions { display: flex; gap: 0.4rem; padding: 0.65rem 0.95rem; }
+  .sort-actions button {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; cursor: pointer;
+    background: #0f131a; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 0.35rem 0.65rem;
+  }
+  .sort-actions button.primary { border-color: var(--accent); color: var(--accent); }
+  .sort-feedback {
+    padding: 0.55rem 0.95rem 0.85rem; font-size: 0.9rem; color: var(--muted); min-height: 1.6rem;
+  }
+  .sort-feedback.ok { color: var(--good); }
+  .sort-feedback.no { color: var(--bad); }
+
+  .decide {
+    background: #15243a; border: 1px solid #2a3f5a; border-radius: var(--radius);
+    padding: 1rem 1.1rem; margin: 1.2rem 0;
+  }
+  .decide h3 { font-family: Syne, sans-serif; margin: 0 0 0.45rem; font-size: 1.05rem; color: var(--accent); }
+  .decide p { margin: 0 0 0.5rem; }
+  .decide p:last-child { margin: 0; }
+
+  footer {
+    margin-top: 3rem; padding-top: 1.4rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 0.88rem;
+  }
+  footer a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Concepts · interactive · engine-agnostic</p>
+  <h1>Asset Systems Lab</h1>
+  <p class="lede">
+    Prerequisite mental model for building a catalog + loader + GPU residency layer:
+    what <strong>game code</strong> should name and request, and what actually lives on the
+    <strong>WebGL</strong> device after upload — so you don’t confuse a key, a CPU decode, and a GPU handle.
+  </p>
+  <div class="meta">
+    <span class="pill"><em>rule:</em> keys outlive handles</span>
+    <span class="pill"><em>draw:</em> bind · never re-upload</span>
+    <span class="pill"><em>pair:</em> <a href="./gpu-asset-lifecycle-lab.html" style="color:inherit;text-decoration:underline">Aero-mapped lab</a></span>
+  </div>
+  <nav class="toc">
+    <a href="#three-layers">1 · Three layers of “an asset”</a>
+    <a href="#catalog">2 · Catalogs &amp; game call sites</a>
+    <a href="#webgl">3 · WebGL residency lifecycle</a>
+    <a href="#lab-pipe">4 · Step the pipeline (lab)</a>
+    <a href="#sort">5 · Sort: key · bytes · handle</a>
+    <a href="#textures">6 · Buffers vs textures (same idea)</a>
+    <a href="#quiz">7 · Ownership quiz</a>
+    <a href="#defaults">8 · Defaults to commit to</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="three-layers">
+  <h2><span class="num">01</span> Three layers of “an asset”</h2>
+  <p>
+    People say “load the cube” and mean three different things. Name them separately or your API
+    will smuggle GPU objects into gameplay and break on context loss / hot reload / level unload.
+  </p>
+  <div class="cols three">
+    <div class="card game">
+      <h3>1 · Catalog key</h3>
+      <ul>
+        <li>Stable id: <code>"cube"</code>, <code>"ui/atlas"</code></li>
+        <li>Product vocabulary</li>
+        <li>Safe on entities &amp; save data</li>
+      </ul>
+    </div>
+    <div class="card cpu">
+      <h3>2 · CPU description</h3>
+      <ul>
+        <li>Decoded bytes / arrays</li>
+        <li><code>Float32Array</code>, <code>ImageBitmap</code></li>
+        <li>Invisible to the GPU</li>
+      </ul>
+    </div>
+    <div class="card gpu">
+      <h3>3 · GPU residency</h3>
+      <ul>
+        <li><code>WebGLBuffer</code>, VAO, texture</li>
+        <li>Created by explicit upload</li>
+        <li>Dies with context or dispose</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">
+    <strong>Mental model:</strong>
+    a catalog maps keys → descriptions. A <em>loader / cache</em> turns descriptions into CPU data
+    (and tracks “is this ready?”). A <em>GPU registry</em> turns CPU data into device objects
+    and is the only place that calls <code>createBuffer</code> / <code>texImage2D</code> / <code>delete*</code>.
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="catalog">
+  <h2><span class="num">02</span> Catalogs &amp; game call sites</h2>
+  <p>
+    Game code’s job is to <strong>declare what exists</strong> and <strong>point at it by key</strong>.
+    It should not invent GL objects, and it should not care whether the mesh is resident yet —
+    that’s the engine’s readiness contract.
+  </p>
+
+  <h3>What a catalog is</h3>
+  <p>
+    A typed map from key → description. Descriptions are serializable product content
+    (paths, inline vertex lists, sampler flags). No <code>WebGL*</code> types in here.
+  </p>
+<pre class="code"><span class="c">// game owns vocabulary</span>
+<span class="k">const</span> ASSETS = {
+  cube:  { type: <span class="s">"mesh"</span>,  src: <span class="s">"/meshes/cube.json"</span> },
+  atlas: { type: <span class="s">"tex"</span>,   src: <span class="s">"/img/atlas.png"</span>, wrap: <span class="s">"clamp"</span> },
+} <span class="k">as const</span>;
+
+<span class="k">type</span> <span class="t">AssetKey</span> = keyof <span class="k">typeof</span> ASSETS;  <span class="c">// "cube" | "atlas"</span></pre>
+
+  <h3>What entities store</h3>
+  <div class="cols two">
+    <div class="card good" style="border-top:3px solid var(--good)">
+      <h3 style="color:var(--good)">Prefer</h3>
+      <p><code>mesh: AssetKey</code> or branded <code>MeshId</code></p>
+      <p>Survives reload, context loss, and “not uploaded yet.”</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--bad)">
+      <h3 style="color:var(--bad)">Avoid</h3>
+      <p><code>vao: WebGLVertexArrayObject</code> on the entity</p>
+      <p>Handle is disposable; entity is not. Coupling = distributed outage.</p>
+    </div>
+  </div>
+
+  <h3>Call-site explorer</h3>
+  <p>Toggle patterns. Watch which side of the boundary each call site belongs on.</p>
+  <div class="lab" data-lab="callsites">
+    <div class="lab-head">
+      <div class="lab-title">Game vs engine call sites</div>
+      <div class="toggle-row" data-sites>
+        <button type="button" data-id="spawn" class="on">spawn entity</button>
+        <button type="button" data-id="preload">preload level</button>
+        <button type="button" data-id="draw">draw frame</button>
+        <button type="button" data-id="unload">unload level</button>
+        <button type="button" data-id="bad">anti-pattern</button>
+      </div>
+    </div>
+    <div class="callsite">
+      <div class="snippet" data-snippet></div>
+      <div class="verdict" data-verdict></div>
+    </div>
+  </div>
+
+  <div class="note good">
+    <strong>Readiness is an engine concern.</strong>
+    Gameplay can ask <code>assets.isReady("cube")</code> or wait on <code>await assets.ensure(["cube"])</code>.
+    Drawing code that finds a missing GPU handle should skip or assert — not silently create buffers mid-frame.
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="webgl">
+  <h2><span class="num">03</span> WebGL residency lifecycle</h2>
+  <p>
+    Crossing into the GPU is an explicit sequence. Nothing you <code>import</code> or <code>fetch</code>
+    becomes drawable until you allocate device objects and fill them.
+  </p>
+
+  <div class="pipeline">
+    <div class="step cpu">
+      <div class="who">1 · Describe</div>
+      <div class="what">Catalog entry: key + type + source / inline data</div>
+      <div class="why">Authoring time. Zero GL. Cheap to hot-reload as data.</div>
+    </div>
+    <div class="step boot">
+      <div class="who">2 · Acquire (CPU)</div>
+      <div class="what"><code>fetch</code> / decode → typed arrays or <code>ImageBitmap</code></div>
+      <div class="why">Still host memory. Useful for CPU collision, baking, or re-upload after context loss.</div>
+    </div>
+    <div class="step gpu">
+      <div class="who">3 · Upload (GPU)</div>
+      <div class="what"><code>createBuffer</code> / <code>createTexture</code> + <code>bufferData</code> / <code>texImage2D</code> (+ VAO setup)</div>
+      <div class="why">Spends VRAM. Returns a <em>handle</em> the renderer stores in a registry keyed by asset id.</div>
+    </div>
+    <div class="step draw">
+      <div class="who">4 · Bind &amp; draw</div>
+      <div class="what"><code>bindVertexArray</code> / <code>bindTexture</code> → uniforms → <code>draw*</code></div>
+      <div class="why">Per-frame. Must not call <code>bufferData</code> for static content. Upload ≠ draw.</div>
+    </div>
+    <div class="step free">
+      <div class="who">5 · Dispose / context loss</div>
+      <div class="what"><code>deleteBuffer</code> / <code>deleteTexture</code> / <code>deleteVertexArray</code>, or treat all handles as dead</div>
+      <div class="why">JS GC does <em>not</em> free GPU memory. Losing the context orphans every handle.</div>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <strong><code>STATIC_DRAW</code> contract.</strong>
+    After upload, mutating the CPU array does nothing to the GPU copy.
+    Either re-upload (<code>bufferSubData</code> / new <code>bufferData</code>) or use a dynamic strategy deliberately.
+  </div>
+
+  <div class="note gpu">
+    <strong>VAOs remember layout, not ownership of “the mesh.”</strong>
+    A VAO records which buffers feed which attribute locations for a given program’s layout.
+    Attribute locations can differ per shader program — so “one VAO forever for this mesh” is not always true.
+    Store enough info to rebuild if the program changes.
+  </div>
+
+  <table class="cheat">
+    <thead>
+      <tr><th>WebGL call</th><th>Lifecycle role</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>createBuffer</code> / <code>createTexture</code> / <code>createVertexArray</code></td>
+        <td>Allocate residency</td>
+        <td>Load / ensure — never every frame</td>
+      </tr>
+      <tr>
+        <td><code>bufferData</code> / <code>texImage2D</code></td>
+        <td>Fill residency</td>
+        <td>Load; rare updates if dynamic</td>
+      </tr>
+      <tr>
+        <td><code>bind*</code> + <code>draw*</code></td>
+        <td>Use residency</td>
+        <td>Every frame that needs it</td>
+      </tr>
+      <tr>
+        <td><code>delete*</code></td>
+        <td>Release residency</td>
+        <td>Unload / refcount → 0</td>
+      </tr>
+      <tr>
+        <td>context lost / restored</td>
+        <td>Invalidate all handles</td>
+        <td>Browser / GPU reset — re-upload from CPU cache</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 4 -->
+<section id="lab-pipe">
+  <h2><span class="num">04</span> Step the pipeline</h2>
+  <p>
+    Drive one toy mesh through key → CPU → GPU. Try drawing before upload, mutating after upload,
+    forgetting the JS handle without dispose, and surviving a fake context loss.
+  </p>
+
+  <div class="lab" data-lab="pipeline">
+    <div class="lab-head">
+      <div class="lab-title">Toy asset pipeline · mesh "cube"</div>
+    </div>
+    <div class="phase-strip" data-phases>
+      <span class="ph" data-ph="idle">idle</span>
+      <span class="ph" data-ph="cataloged">cataloged</span>
+      <span class="ph" data-ph="decoded">decoded</span>
+      <span class="ph" data-ph="uploaded">uploaded</span>
+      <span class="ph" data-ph="drawing">drawing</span>
+      <span class="ph" data-ph="lost">ctx lost</span>
+    </div>
+    <div class="actions">
+      <button type="button" data-act="catalog" class="primary">1 · catalog</button>
+      <button type="button" data-act="decode">2 · decode CPU</button>
+      <button type="button" data-act="upload">3 · upload GPU</button>
+      <button type="button" data-act="draw">4 · draw</button>
+      <button type="button" data-act="mutate">mutate CPU</button>
+      <button type="button" data-act="forget" class="danger">drop JS handle</button>
+      <button type="button" data-act="dispose" class="danger">dispose GPU</button>
+      <button type="button" data-act="lose" class="danger">context loss</button>
+      <button type="button" data-act="restore">restore + reupload</button>
+      <button type="button" data-act="reset">reset</button>
+    </div>
+    <div class="board three">
+      <div class="lane catalog">
+        <h4>Catalog · keys</h4>
+        <div data-lane-catalog></div>
+      </div>
+      <div class="lane cpu">
+        <h4>CPU · decoded</h4>
+        <div data-lane-cpu></div>
+      </div>
+      <div class="lane gpu">
+        <h4>GPU · resident</h4>
+        <div data-lane-gpu></div>
+      </div>
+    </div>
+    <div class="meter">
+      <h4>memory (toy units)</h4>
+      <div class="bar cpu"><span data-bar-cpu></span></div>
+      <div class="val">CPU arrays: <span data-cpu-bytes>0</span></div>
+      <div class="bar vram" style="margin-top:0.55rem"><span data-bar-vram></span></div>
+      <div class="val">VRAM: <span data-vram-bytes>0</span> · refs: <span data-refs>0</span></div>
+    </div>
+    <div class="log" data-log></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="sort">
+  <h2><span class="num">05</span> Sort: key · bytes · handle</h2>
+  <p>
+    Drag (or click chip → click bucket) each concept into the layer it belongs to.
+  </p>
+  <div class="lab" data-lab="sort">
+    <div class="lab-head">
+      <div class="lab-title">Where does this live?</div>
+    </div>
+    <div class="sort-board">
+      <div class="bucket catalog" data-bucket="catalog" data-drop>
+        <h4>Catalog / game</h4>
+        <div data-slot="catalog"></div>
+      </div>
+      <div class="bucket cpu" data-bucket="cpu" data-drop>
+        <h4>CPU decode / cache</h4>
+        <div data-slot="cpu"></div>
+      </div>
+      <div class="bucket gpu" data-bucket="gpu" data-drop>
+        <h4>GPU registry</h4>
+        <div data-slot="gpu"></div>
+      </div>
+    </div>
+    <div data-pool style="padding: 0 0.85rem 0.5rem;"></div>
+    <div class="sort-actions">
+      <button type="button" class="primary" data-check>Check</button>
+      <button type="button" data-reset>Reset</button>
+    </div>
+    <div class="sort-feedback" data-sort-feedback>Place every chip, then check.</div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="textures">
+  <h2><span class="num">06</span> Buffers vs textures (same idea)</h2>
+  <p>
+    Meshes and images look different in APIs, but the three-layer story is identical.
+  </p>
+  <table class="cheat">
+    <thead>
+      <tr><th></th><th>Mesh / geometry</th><th>Texture / image</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Catalog</strong></td>
+        <td>key + vertex layout / path</td>
+        <td>key + path + wrap/filter hints</td>
+      </tr>
+      <tr>
+        <td><strong>CPU</strong></td>
+        <td><code>Float32Array</code> positions / normals / uvs</td>
+        <td><code>ImageBitmap</code> / <code>HTMLImageElement</code> / raw pixels</td>
+      </tr>
+      <tr>
+        <td><strong>Upload</strong></td>
+        <td><code>createBuffer</code> + <code>bufferData</code> (+ VAO)</td>
+        <td><code>createTexture</code> + <code>texImage2D</code> + params</td>
+      </tr>
+      <tr>
+        <td><strong>Draw</strong></td>
+        <td><code>bindVertexArray</code> → <code>drawArrays/Elements</code></td>
+        <td><code>activeTexture</code> + <code>bindTexture</code> → sample in shader</td>
+      </tr>
+      <tr>
+        <td><strong>Dispose</strong></td>
+        <td><code>deleteBuffer</code> / <code>deleteVertexArray</code></td>
+        <td><code>deleteTexture</code></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>One registry, many kinds.</strong>
+    A practical asset manager is often <code>Map&lt;AssetKey, GpuSlot&gt;</code> where the slot is a
+    discriminated union (<code>{ kind: "mesh", vao, buffers }</code> | <code>{ kind: "tex", texture }</code>).
+    Game code still only sees keys and readiness — not the union guts.
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="quiz">
+  <h2><span class="num">07</span> Ownership quiz</h2>
+  <p>Who should own each concern?</p>
+  <div class="lab" data-lab="quiz">
+    <div class="lab-head">
+      <div class="lab-title">Catalog · loader · GPU · shell</div>
+      <span class="quiz-progress">q <em data-q-n>1</em> / <span data-q-total>8</span></span>
+    </div>
+    <div class="quiz-item" data-q-text></div>
+    <div class="quiz-actions">
+      <button type="button" data-ans="catalog">game / catalog</button>
+      <button type="button" data-ans="loader">CPU loader / cache</button>
+      <button type="button" data-ans="gpu">GPU registry</button>
+      <button type="button" data-ans="shell">shell / boot</button>
+    </div>
+    <div class="quiz-feedback" data-q-fb>Choose an answer.</div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="defaults">
+  <h2><span class="num">08</span> Defaults to commit to</h2>
+  <div class="decide">
+    <h3>Design rules worth keeping</h3>
+    <p>
+      <strong>1.</strong> Gameplay stores <em>keys</em>, never raw <code>WebGL*</code> handles.
+    </p>
+    <p>
+      <strong>2.</strong> Catalog = descriptions only. Loader = CPU readiness. GPU registry = residency + dispose.
+    </p>
+    <p>
+      <strong>3.</strong> Upload is a lifecycle event; draw only binds. Mid-frame <code>bufferData</code> for static meshes is a smell.
+    </p>
+    <p>
+      <strong>4.</strong> Keep enough CPU (or reloadable) data to survive context loss — handles are ephemeral.
+    </p>
+    <p>
+      <strong>5.</strong> If you can’t delete it, don’t create it casually. Track buffer/texture/VAO ids for dispose.
+    </p>
+  </div>
+
+  <div class="layers">
+    <div class="row">
+      <div class="who">minimal API</div>
+      <div class="what">
+        <strong>ensure(keys)</strong> · <strong>isReady(key)</strong> · <strong>getGpu(key)</strong> (engine-internal) ·
+        <strong>release(keys)</strong> / refcount
+      </div>
+    </div>
+    <div class="row">
+      <div class="who">game uses</div>
+      <div class="what"><strong>ensure</strong> + keys on entities. Never <strong>getGpu</strong> from sim code.</div>
+    </div>
+    <div class="row">
+      <div class="who">renderer uses</div>
+      <div class="what"><strong>getGpu</strong> after readiness; bind; draw; never invent catalog keys.</div>
+    </div>
+  </div>
+
+  <p>
+    When you’re ready to map this onto a concrete codebase:
+    <a href="./gpu-asset-lifecycle-lab.html">GPU Asset Lifecycle Lab</a> (Aero-shaped wiring).
+  </p>
+</section>
+
+<footer>
+  Engine-agnostic prerequisites for asset catalogs and WebGL residency.
+  Open in a browser — no build step.
+  Related: <a href="./gpu-asset-lifecycle-lab.html">GPU Asset Lifecycle Lab</a>
+  · <a href="./engine-vs-game-lab.html">Engine vs Game Lab</a>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  /* ── Call-site explorer ───────────────────────────────────────── */
+  const sites = {
+    spawn: {
+      code: `// gameplay / spawn system
+entity.mesh = "cube";          // catalog key
+entity.transform = { ... };
+
+// later, presentation reads the key — not a VAO`,
+      cls: "good",
+      text: "<strong>Good.</strong> Entity stores a key. Renderer resolves residency when drawing (or skips if not ready).",
+    },
+    preload: {
+      code: `// level / scene enter (game or shell)
+await assets.ensure(["cube", "atlas", "floor"]);
+// blocks until CPU decode + GPU upload for the set
+startScene("hangar");`,
+      cls: "good",
+      text: "<strong>Good.</strong> Explicit ensure at a loading boundary — not sprinkled inside the frame loop.",
+    },
+    draw: {
+      code: `// renderer (engine) — once per mesh draw
+const gpu = registry.get("cube");
+if (!gpu) return;              // or assert in debug
+gl.bindVertexArray(gpu.vao);
+gl.drawArrays(gl.TRIANGLES, 0, gpu.vertexCount);`,
+      cls: "good",
+      text: "<strong>Good.</strong> Draw binds existing residency. No createBuffer / bufferData on the hot path.",
+    },
+    unload: {
+      code: `// leaving a level
+assets.release(["hangar_prop_*"]);
+// refcount → 0 ⇒ deleteBuffer / deleteTexture / clear registry slot
+// catalog entries can remain; CPU cache optional to keep`,
+      cls: "good",
+      text: "<strong>Good.</strong> Release is symmetric with ensure. Catalog can outlive residency.",
+    },
+    bad: {
+      code: `// ❌ anti-pattern in a gameplay system
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(entity.verts), gl.STATIC_DRAW);
+entity.glBuffer = buf;  // now sim owns a disposable handle`,
+      cls: "bad",
+      text: "<strong>Bad.</strong> Gameplay crossed into GL, stored a handle on the entity, and skipped the registry — leaks and context-loss landmines.",
+    },
+  };
+
+  const root = document.querySelector('[data-lab="callsites"]');
+  if (root) {
+    const snip = root.querySelector("[data-snippet]");
+    const verd = root.querySelector("[data-verdict]");
+    function show(id) {
+      const s = sites[id];
+      snip.textContent = s.code;
+      verd.className = "verdict " + s.cls;
+      verd.innerHTML = s.text;
+      root.querySelectorAll("[data-id]").forEach((b) => b.classList.toggle("on", b.dataset.id === id));
+    }
+    root.querySelectorAll("[data-id]").forEach((b) => {
+      b.addEventListener("click", () => show(b.dataset.id));
+    });
+    show("spawn");
+  }
+})();
+
+(function () {
+  /* ── Pipeline stepper ─────────────────────────────────────────── */
+  const BYTES = 64;
+  const root = document.querySelector('[data-lab="pipeline"]');
+  if (!root) return;
+
+  const logEl = root.querySelector("[data-log]");
+  const laneCat = root.querySelector("[data-lane-catalog]");
+  const laneCpu = root.querySelector("[data-lane-cpu]");
+  const laneGpu = root.querySelector("[data-lane-gpu]");
+  const barCpu = root.querySelector("[data-bar-cpu]");
+  const barVram = root.querySelector("[data-bar-vram]");
+  const cpuBytes = root.querySelector("[data-cpu-bytes]");
+  const vramBytes = root.querySelector("[data-vram-bytes]");
+  const refsEl = root.querySelector("[data-refs]");
+  const phases = [...root.querySelectorAll("[data-ph]")];
+
+  const state = {
+    phase: "idle",
+    catalog: false,
+    cpu: null,   // { verts, mutated }
+    gpu: null,   // { vao, vertsSnap, orphaned }
+    refs: 0,
+    draws: 0,
+    ctxLost: false,
+  };
+
+  function log(cls, msg) {
+    const line = document.createElement("div");
+    line.className = cls;
+    line.textContent = msg;
+    logEl.prepend(line);
+  }
+
+  function setPhase(p) {
+    state.phase = p;
+    const order = ["idle", "cataloged", "decoded", "uploaded", "drawing", "lost"];
+    const idx = order.indexOf(p);
+    phases.forEach((el) => {
+      const i = order.indexOf(el.dataset.ph);
+      el.classList.toggle("on", el.dataset.ph === p);
+      el.classList.toggle("done", i < idx && i >= 0 && el.dataset.ph !== "idle");
+    });
+  }
+
+  function renderLanes() {
+    laneCat.innerHTML = state.catalog
+      ? `<div class="asset keyed"><span class="name">"cube"</span><span class="meta-line">type: mesh · src/inline · no GL</span></div>`
+      : `<div class="asset empty">no key</div>`;
+
+    if (!state.cpu) {
+      laneCpu.innerHTML = `<div class="asset empty">not decoded</div>`;
+    } else {
+      laneCpu.innerHTML = `<div class="asset decoded">
+        <span class="name">Float32Array</span>
+        <span class="meta-line">verts ${state.cpu.verts} · host memory</span>
+        ${state.cpu.mutated ? `<span class="meta-line" style="color:var(--warn)">⚠ mutated — GPU copy stale</span>` : ""}
+      </div>`;
+    }
+
+    if (!state.gpu) {
+      laneGpu.innerHTML = `<div class="asset empty">${state.ctxLost ? "handles invalidated" : "nothing resident"}</div>`;
+    } else {
+      const cls = state.gpu.orphaned ? "leaked" : state.draws > 0 ? "bound" : "resident";
+      const label = state.gpu.orphaned
+        ? "orphaned VRAM (no registry entry)"
+        : state.draws > 0 ? "bound last frame" : "resident";
+      laneGpu.innerHTML = `<div class="asset ${cls}">
+        <span class="name">${state.gpu.vao}</span>
+        <span class="meta-line">${label} · snap ${state.gpu.vertsSnap} · draws ${state.draws}</span>
+        ${state.gpu.orphaned ? `<span class="meta-line" style="color:var(--bad)">leak: delete* never ran</span>` : ""}
+      </div>`;
+    }
+
+    const cpu = state.cpu ? BYTES : 0;
+    const vram = state.gpu ? BYTES : 0;
+    cpuBytes.textContent = String(cpu);
+    vramBytes.textContent = String(vram);
+    refsEl.textContent = String(state.refs);
+    barCpu.style.width = (cpu / BYTES) * 100 + "%";
+    barVram.style.width = (vram / BYTES) * 100 + "%";
+  }
+
+  function syncButtons() {
+    const hasGpu = !!state.gpu && !state.gpu.orphaned;
+    const map = {
+      catalog: !state.catalog && !state.ctxLost,
+      decode: state.catalog && !state.cpu && !state.ctxLost,
+      upload: !!state.cpu && !hasGpu && !state.ctxLost,
+      draw: hasGpu && !state.ctxLost,
+      mutate: !!state.cpu && hasGpu,
+      forget: hasGpu,
+      dispose: hasGpu,
+      lose: !state.ctxLost && (state.catalog || state.cpu || state.gpu),
+      restore: state.ctxLost,
+      reset: true,
+    };
+    root.querySelectorAll("[data-act]").forEach((btn) => {
+      btn.disabled = map[btn.dataset.act] === false;
+    });
+  }
+
+  function paint() {
+    renderLanes();
+    syncButtons();
+  }
+
+  const acts = {
+    catalog() {
+      state.catalog = true;
+      setPhase("cataloged");
+      log("game", 'catalog · ASSETS["cube"] = { type: "mesh", ... }');
+      paint();
+    },
+    decode() {
+      if (!state.catalog) return;
+      state.cpu = { verts: 36, mutated: false };
+      setPhase("decoded");
+      log("cpu", "decode · fetch/parse → Float32Array on the heap (still not drawable)");
+      paint();
+    },
+    upload() {
+      if (!state.cpu || state.ctxLost) return;
+      state.gpu = {
+        vao: "vao#" + (10 + Math.floor(Math.random() * 89)),
+        vertsSnap: state.cpu.verts,
+        orphaned: false,
+      };
+      state.cpu.mutated = false;
+      state.refs = 1;
+      state.draws = 0;
+      setPhase("uploaded");
+      log("gpu", `upload · createVertexArray + createBuffer + bufferData(STATIC_DRAW) → ${state.gpu.vao}`);
+      paint();
+    },
+    draw() {
+      if (!state.gpu || state.gpu.orphaned || state.ctxLost) {
+        log("warn", "draw refused · no valid residency (upload first, or context is lost)");
+        paint();
+        return;
+      }
+      state.draws += 1;
+      setPhase("drawing");
+      const mismatch = state.cpu?.mutated ? " · drawing stale GPU snapshot" : "";
+      log("draw", `draw · bindVertexArray(${state.gpu.vao}) · count=${state.gpu.vertsSnap}${mismatch}`);
+      paint();
+    },
+    mutate() {
+      if (!state.cpu || !state.gpu) return;
+      state.cpu.verts = 48;
+      state.cpu.mutated = true;
+      log("warn", "mutate CPU array · STATIC_DRAW buffer unchanged until re-upload");
+      paint();
+    },
+    forget() {
+      if (!state.gpu || state.gpu.orphaned) return;
+      state.gpu.orphaned = true;
+      state.refs = 0;
+      log("free", "dropped registry entry without delete* · VRAM still allocated (classic leak)");
+      paint();
+    },
+    dispose() {
+      if (!state.gpu || state.gpu.orphaned) return;
+      log("free", `dispose · deleteVertexArray + deleteBuffer · clear registry["cube"]`);
+      state.gpu = null;
+      state.refs = 0;
+      state.draws = 0;
+      setPhase(state.cpu ? "decoded" : state.catalog ? "cataloged" : "idle");
+      paint();
+    },
+    lose() {
+      state.ctxLost = true;
+      if (state.gpu) {
+        log("free", "webglcontextlost · every WebGL* handle is now invalid");
+        state.gpu = null;
+        state.refs = 0;
+        state.draws = 0;
+      } else {
+        log("free", "webglcontextlost · no residency to invalidate");
+      }
+      setPhase("lost");
+      paint();
+    },
+    restore() {
+      if (!state.ctxLost) return;
+      state.ctxLost = false;
+      log("boot", "webglcontextrestored · programs recompiled; assets need re-upload from CPU");
+      if (state.cpu) {
+        state.gpu = {
+          vao: "vao#" + (10 + Math.floor(Math.random() * 89)),
+          vertsSnap: state.cpu.verts,
+          orphaned: false,
+        };
+        state.cpu.mutated = false;
+        state.refs = 1;
+        state.draws = 0;
+        setPhase("uploaded");
+        log("gpu", `re-upload · ${state.gpu.vao} rebuilt from CPU cache`);
+      } else if (state.catalog) {
+        setPhase("cataloged");
+        log("warn", "no CPU cache — must decode again before upload");
+      } else {
+        setPhase("idle");
+      }
+      paint();
+    },
+    reset() {
+      Object.assign(state, {
+        phase: "idle", catalog: false, cpu: null, gpu: null,
+        refs: 0, draws: 0, ctxLost: false,
+      });
+      setPhase("idle");
+      logEl.innerHTML = "";
+      log("boot", "reset · clean slate");
+      paint();
+    },
+  };
+
+  root.querySelectorAll("[data-act]").forEach((btn) => {
+    btn.addEventListener("click", () => acts[btn.dataset.act]?.());
+  });
+
+  setPhase("idle");
+  paint();
+  log("boot", 'ready · press catalog to declare key "cube"');
+})();
+
+(function () {
+  /* ── Sort lab ─────────────────────────────────────────────────── */
+  const items = [
+    { id: "key", label: 'AssetKey "cube"', bucket: "catalog" },
+    { id: "desc", label: "mesh description / path", bucket: "catalog" },
+    { id: "entity", label: "entity.mesh = key", bucket: "catalog" },
+    { id: "f32", label: "Float32Array vertices", bucket: "cpu" },
+    { id: "bitmap", label: "ImageBitmap decode", bucket: "cpu" },
+    { id: "ready", label: "isReady / ensure promise", bucket: "cpu" },
+    { id: "vao", label: "WebGLVertexArrayObject", bucket: "gpu" },
+    { id: "buf", label: "WebGLBuffer + bufferData", bucket: "gpu" },
+    { id: "tex", label: "WebGLTexture + texImage2D", bucket: "gpu" },
+    { id: "del", label: "deleteBuffer / deleteTexture", bucket: "gpu" },
+  ];
+
+  const root = document.querySelector('[data-lab="sort"]');
+  if (!root) return;
+  const pool = root.querySelector("[data-pool]");
+  const feedback = root.querySelector("[data-sort-feedback]");
+  let selected = null;
+  const placement = {};
+
+  function chipEl(item) {
+    const el = document.createElement("span");
+    el.className = "chip";
+    el.textContent = item.label;
+    el.draggable = true;
+    el.dataset.id = item.id;
+    el.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", item.id);
+      selected = item.id;
+    });
+    el.addEventListener("click", () => {
+      root.querySelectorAll(".chip").forEach((c) => c.classList.remove("selected"));
+      el.classList.add("selected");
+      selected = item.id;
+    });
+    return el;
+  }
+
+  function place(id, bucket) {
+    placement[id] = bucket;
+    render();
+  }
+
+  function render() {
+    ["catalog", "cpu", "gpu"].forEach((b) => {
+      const slot = root.querySelector(`[data-slot="${b}"]`);
+      slot.innerHTML = "";
+      items.filter((i) => placement[i.id] === b).forEach((i) => slot.appendChild(chipEl(i)));
+    });
+    pool.innerHTML = "";
+    items.filter((i) => !placement[i.id]).forEach((i) => pool.appendChild(chipEl(i)));
+  }
+
+  root.querySelectorAll("[data-drop]").forEach((bucket) => {
+    bucket.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      bucket.classList.add("over");
+    });
+    bucket.addEventListener("dragleave", () => bucket.classList.remove("over"));
+    bucket.addEventListener("drop", (e) => {
+      e.preventDefault();
+      bucket.classList.remove("over");
+      const id = e.dataTransfer.getData("text/plain") || selected;
+      if (id) place(id, bucket.dataset.bucket);
+    });
+    bucket.addEventListener("click", () => {
+      if (selected) place(selected, bucket.dataset.bucket);
+    });
+  });
+
+  root.querySelector("[data-check]").addEventListener("click", () => {
+    let ok = true;
+    let missing = 0;
+    items.forEach((i) => {
+      const chips = root.querySelectorAll(`.chip[data-id="${i.id}"]`);
+      chips.forEach((c) => c.classList.remove("right", "wrong"));
+      if (!placement[i.id]) {
+        missing++;
+        ok = false;
+        return;
+      }
+      const good = placement[i.id] === i.bucket;
+      chips.forEach((c) => c.classList.add(good ? "right" : "wrong"));
+      if (!good) ok = false;
+    });
+    feedback.className = "sort-feedback " + (ok && !missing ? "ok" : "no");
+    if (missing) {
+      feedback.textContent = `Place all chips first (${missing} left).`;
+    } else if (ok) {
+      feedback.textContent = "All correct — keys in catalog, bytes on CPU, handles on GPU.";
+    } else {
+      feedback.textContent = "Some chips are in the wrong layer (highlighted).";
+    }
+  });
+
+  root.querySelector("[data-reset]").addEventListener("click", () => {
+    Object.keys(placement).forEach((k) => delete placement[k]);
+    selected = null;
+    feedback.className = "sort-feedback";
+    feedback.textContent = "Place every chip, then check.";
+    render();
+  });
+
+  render();
+})();
+
+(function () {
+  /* ── Ownership quiz ───────────────────────────────────────────── */
+  const questions = [
+    {
+      t: "Where does the list of product asset names (\"cube\", \"atlas\") live?",
+      hint: "Vocabulary, not GL objects.",
+      a: "catalog",
+      why: "The game catalog owns keys and descriptions. Engine code should not hardcode product nouns.",
+    },
+    {
+      t: "Who turns a PNG path into an ImageBitmap / pixel buffer?",
+      hint: "Still host memory.",
+      a: "loader",
+      why: "CPU loader/cache owns fetch + decode and readiness. Upload is a separate step.",
+    },
+    {
+      t: "Who calls createTexture + texImage2D and stores the WebGLTexture?",
+      hint: "Device memory.",
+      a: "gpu",
+      why: "GPU registry is the only layer that should allocate and delete WebGL objects.",
+    },
+    {
+      t: "Who decides at boot which level’s asset set to ensure() before the first frame?",
+      hint: "Composition root.",
+      a: "shell",
+      why: "Shell / boot composes “this session needs these keys.” Catalog defines them; loader/GPU fulfill them.",
+    },
+    {
+      t: "An entity component should reference a mesh how?",
+      hint: "Survive context loss.",
+      a: "catalog",
+      why: "Store a catalog key (or branded id). Never store a WebGLVertexArrayObject on sim state.",
+    },
+    {
+      t: "After webglcontextlost, who recreates VAOs/buffers before draw works again?",
+      hint: "Handles are dead.",
+      a: "gpu",
+      why: "Only the GPU registry can re-upload. It needs CPU-cached (or re-decoded) source data.",
+    },
+    {
+      t: "Who should refuse a mid-frame bufferData for a STATIC_DRAW mesh?",
+      hint: "Hot path discipline.",
+      a: "gpu",
+      why: "The renderer/registry owns the upload-vs-draw contract. Draw binds; load uploads.",
+    },
+    {
+      t: "Who tracks refcounts / release when leaving a level so delete* can run?",
+      hint: "Lifecycle symmetry with ensure.",
+      a: "loader",
+      why: "Loader/cache typically owns ensure/release policy; at zero refs it asks the GPU registry to dispose.",
+    },
+  ];
+
+  const root = document.querySelector('[data-lab="quiz"]');
+  if (!root) return;
+  let i = 0;
+  const text = root.querySelector("[data-q-text]");
+  const fb = root.querySelector("[data-q-fb]");
+  const nEl = root.querySelector("[data-q-n]");
+  root.querySelector("[data-q-total]").textContent = String(questions.length);
+
+  function show() {
+    const q = questions[i];
+    nEl.textContent = String(i + 1);
+    text.innerHTML = q.t + `<span class="hint">${q.hint}</span>`;
+    fb.className = "quiz-feedback";
+    fb.textContent = "Choose an answer.";
+  }
+
+  root.querySelectorAll("[data-ans]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const q = questions[i];
+      const ok = btn.dataset.ans === q.a;
+      fb.className = "quiz-feedback " + (ok ? "right" : "wrong");
+      fb.innerHTML = ok
+        ? `<strong>Correct.</strong> ${q.why}`
+        : `<strong>Not quite.</strong> ${q.why}`;
+      if (ok) {
+        setTimeout(() => {
+          i = (i + 1) % questions.length;
+          show();
+        }, 900);
+      }
+    });
+  });
+
+  show();
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,4 @@
-import type { MeshRenderHints } from "../rendering/renderer.contract";
-
-export interface Mesh extends MeshRenderHints {
+export interface Mesh {
   vertices: number[];
   normals: number[];
   origin?: [

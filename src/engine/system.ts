@@ -1,8 +1,7 @@
-import type { SceneId } from "./contracts/branded-values";
-import type { Mesh } from "./contracts/geometry/geometry.contract";
 import type { RendererBackend, Runtime, Session, System } from "./contracts/internal";
 import type { RendererType } from "./contracts/rendering/renderer.contract";
 import type { Scene } from "./contracts/scene/scene.contract";
+import { AssetStore, type AssetRegistry } from "./runtime/assets/asset-manager";
 import { SceneRenderer } from "./runtime/rendering/renderer";
 import { WebGlRenderer } from "./runtime/rendering/webgl/web-gl-renderer";
 import { SystemRuntime } from "./runtime/system-runtime";
@@ -23,8 +22,8 @@ function createRendererBackend(type: RendererType, canvas: HTMLCanvasElement): R
   }
 }
 
-function createRenderer(backend: RendererBackend) {
-  return new SceneRenderer(backend);
+function createRenderer(backend: RendererBackend, assetRegistry: AssetRegistry) {
+  return new SceneRenderer(backend, assetRegistry);
 }
 
 export class AeroSystem implements System {
@@ -42,22 +41,11 @@ export class AeroSystem implements System {
     const backend = createRendererBackend(config.renderer, config.parentElement);
 
     const session = new DefaultSession(simulations);
-    const renderer = createRenderer(backend);
-    const runtime = new SystemRuntime(session, renderer, config.parentElement);
+    const assetRegistry = new AssetStore();
+    const renderer = createRenderer(backend, assetRegistry);
+    const runtime = new SystemRuntime(session, renderer, assetRegistry, config.parentElement);
 
     return new AeroSystem(session, runtime, scenes);
-  }
-
-  registerMeshes(meshes: Mesh[]) {
-    this.#runtime.init(meshes);
-  }
-
-  mountScene(id: SceneId) {
-    return this.#runtime.setActiveScene(id);
-  }
-
-  start(): void {
-    this.#runtime.loop();
   }
 
   get runtime() {

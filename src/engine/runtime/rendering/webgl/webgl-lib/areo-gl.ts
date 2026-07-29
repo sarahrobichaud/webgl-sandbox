@@ -1,4 +1,6 @@
+import type { MeshAssetDescription } from "../../../../contracts/assets/assets.contract";
 import type { Mesh } from "../../../../contracts/geometry/geometry.contract";
+import type { VertexLayout } from "../../../../contracts/internal";
 import type { Program, Shaders } from "../../../../contracts/rendering/renderer.contract";
 import { isBuiltIn } from "../webgl-utils";
 
@@ -47,19 +49,16 @@ export class AreoGL {
    * @param program - The program
    * @param meshes - All meshes
    */
-  loadGeometry(program: Program, meshes: Mesh[]) {
-    for (const mesh of meshes) {
-      const vao = this.#c.createVertexArray();
-      this.#c.bindVertexArray(vao);
+  loadGeometry(layout: VertexLayout, data: Mesh) {
+    const vao = this.#c.createVertexArray();
+    this.#c.bindVertexArray(vao);
 
-      this.#uploadAttribute(program.attributes.a_position.location, mesh.vertices);
-      this.#uploadAttribute(program.attributes.a_normal.location, mesh.normals);
+    this.#uploadAttribute(layout.POSITION, data.vertices);
+    this.#uploadAttribute(layout.NORMAL, data.normals);
 
-      this.#c.bindVertexArray(null);
+    this.#c.bindVertexArray(null);
 
-      mesh.r_programId = program.name;
-      mesh.r_vao = vao;
-    }
+    return vao;
   }
 
   /*

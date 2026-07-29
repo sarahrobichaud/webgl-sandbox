@@ -2,8 +2,8 @@ import type { ShaderPair } from "../webgl-lib/areo-types";
 
 const vertex = `#version 300 es
 
-in vec4 a_position;
-in vec3 a_normal;
+layout(location = 0) in vec4 a_position;
+layout(location = 1) in vec3 a_normal;
 
 uniform mat4 u_worldViewProjection;
 uniform mat4 u_world;
