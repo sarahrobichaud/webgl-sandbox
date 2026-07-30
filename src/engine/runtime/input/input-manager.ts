@@ -4,35 +4,20 @@ import { ActionMapper } from "./action-mapper";
 import { BrowserKeyboardInputs } from "./browser-keyboard-inputs";
 import { BrowserMouseInputs } from "./browser-mouse-inputs";
 
-export class InputHub<Action extends string> implements InputManager<Action> {
+export class ActionMonitor<Action extends string> {
   #keyboard: BrowserKeyboardInputs;
   #mouse: BrowserMouseInputs;
-  #bindings: ActionMapper;
+
+  #activeScopes: number[] = [];
 
   constructor() {
     this.#keyboard = new BrowserKeyboardInputs();
     this.#mouse = new BrowserMouseInputs();
-    this.#bindings = new ActionMapper();
   }
 
-  setBindings(actions: ActionRegistry): void {
-    this.#bindings.registerActions(actions);
-  }
-
-  isActive(action: Action): boolean {
-    throw new Error("Method not implemented.");
-  }
-
-  wasActive(action: Action): boolean {
-    throw new Error("Method not implemented.");
-  }
-  wasReleased(action: Action): boolean {
-    throw new Error("Method not implemented.");
-  }
-
-  beginFrame(): void {
-    throw new Error("Method not implemented.");
-  }
+  isActive(action: Action): boolean {}
+  wasActive(action: Action): boolean {}
+  wasReleased(action: Action): boolean {}
 
   attach(target: Window | HTMLElement = window) {
     this.detach();

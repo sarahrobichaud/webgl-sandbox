@@ -2,11 +2,10 @@ import type { ActionRegistry } from "../../engine/contracts/input/actions.contra
 import { KeyboardButton } from "../../engine/contracts/input/button.contract";
 
 export const Action = {
-  ZOOM_IN: {
-    key: KeyboardButton.KeyE,
-  },
-  ZOOM_OUT: {
-    key: KeyboardButton.KeyQ,
+  global: {
+    LOG_TEST: {
+      key: KeyboardButton.KeyJ,
+    },
   },
 } satisfies ActionRegistry;
 

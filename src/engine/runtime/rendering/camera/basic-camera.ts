@@ -106,7 +106,7 @@ export class BasicCamera implements Camera {
 
     const depth = 1000;
 
-    const tilesAcross = 70 * this.#zoom;
+    const tilesAcross = 70 / this.#zoom;
     const halfW = tilesAcross / 2;
     const halfH = halfW / this.#aspect;
 

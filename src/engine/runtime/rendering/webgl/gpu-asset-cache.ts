@@ -5,8 +5,9 @@ export interface GpuAssetCache {
   set(key: string, value: GpuHandle): void;
 }
 
-export class AssetCache implements GpuAssetCache {
+export class GpuAssetStore implements GpuAssetCache {
   #entries: Map<string, GpuHandle> = new Map();
+
   get(key: string) {
     const hit = this.#entries.get(key);
     if (!hit) {

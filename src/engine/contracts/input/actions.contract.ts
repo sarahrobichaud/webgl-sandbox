@@ -4,4 +4,7 @@ interface ActionBinding {
   key: Button;
 }
 
-export type ActionRegistry = Record<string, ActionBinding>;
+export interface ActionRegistry {
+  global: Record<string, ActionBinding>;
+  [scope: string]: Record<string, ActionBinding>;
+}

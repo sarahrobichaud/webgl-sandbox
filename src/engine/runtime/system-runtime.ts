@@ -4,7 +4,7 @@ import type { Mesh } from "../contracts/geometry/geometry.contract";
 import type { Renderer, Runtime, SceneManager, Session } from "../contracts/internal";
 import type { MountedScene, Scene } from "../contracts/scene/scene.contract";
 import { AssetStore } from "./assets/asset-manager";
-import { InputHub } from "./input/input-manager";
+import { InputBridge } from "./input/input-bridge";
 import { Presenter } from "./scenes/presenter";
 
 export class SystemRuntime implements Runtime {
@@ -12,6 +12,7 @@ export class SystemRuntime implements Runtime {
   #renderer: Renderer;
   #session: Session;
   #assets: AssetStore;
+  #input: InputBridge;
   #suspend = false;
 
   constructor(session: Session, renderer: Renderer, assets: AssetStore, canvas: HTMLCanvasElement) {
@@ -19,6 +20,7 @@ export class SystemRuntime implements Runtime {
     this.#renderer = renderer;
     this.#presenter = new Presenter(canvas);
     this.#assets = assets;
+    this.#input = new InputBridge();
   }
 
   setActiveScene(id: SceneId) {
@@ -32,8 +34,11 @@ export class SystemRuntime implements Runtime {
   }
 
   loadScenes(scenes: Scene[]): void {
-    scenes.forEach((s) => this.#presenter.registerScene(s));
+    scenes.forEach((s) => {
+      this.#presenter.registerScene(s);
+    });
   }
+
   #getLoadedScene() {
     const currentScene = this.#presenter.current;
 
@@ -56,6 +61,7 @@ export class SystemRuntime implements Runtime {
 
     try {
       const currentScene = this.#getLoadedScene();
+
       this.#update(currentScene);
       this.#draw(currentScene);
     } catch (e) {

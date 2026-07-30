@@ -1,5 +1,6 @@
 import type { SceneId } from "../branded-values";
-import type { InputManager, SceneSchema } from "../internal";
+import type { ActionRegistry } from "../input/actions.contract";
+import type { InputManager } from "../internal";
 import type { Camera, CameraConfigurationKind } from "../rendering/camera.contract";
 
 export interface Overlay {
@@ -10,14 +11,14 @@ export interface Overlay {
  * View
  */
 
-export interface ViewContext {
+export interface ViewContext<A extends string = string> {
   camera: Camera;
-  input: InputManager<string>;
+  input: InputManager<A>;
 }
 
-export interface View {
+export interface View<A extends string = string> {
   getCamera(): CameraConfigurationKind;
-  onUpdate(context: ViewContext): void;
+  onUpdate(context: ViewContext<A>): void;
 }
 
 /**
@@ -41,6 +42,7 @@ export interface SceneRenderContext {
 export interface Scene {
   id: SceneId;
   view: View;
+  actions?: ActionRegistry;
 }
 
 export interface MountedScene {

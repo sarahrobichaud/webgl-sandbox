@@ -5,21 +5,14 @@ import { AreoGL } from "./webgl-lib/areo-gl";
 import { gridShaders } from "./shaders/grid-shader";
 import type { Position, SpacialData } from "../../../contracts/spatial/spatial.contract";
 import type { FrameRenderingContext, GpuHandle, RendererBackend } from "../../../contracts/internal";
-import type { LoadedMesh, Program, Viewport } from "../../../contracts/rendering/renderer.contract";
-import type { Mesh } from "../../../contracts/geometry/geometry.contract";
+import type { Program, Viewport } from "../../../contracts/rendering/renderer.contract";
 import { MESHES } from "../../../../game/assets/geometry/mesh";
 import type { MeshAssetDescription } from "../../../contracts/assets/assets.contract";
-import type { AssetEntry } from "../../assets/asset-manager";
-import { AssetCache, type GpuAssetCache } from "./gpu-asset-cache";
 
 const VERTEX_LAYOUT = {
   POSITION: 0,
   NORMAL: 1,
 };
-
-interface RenderingContext {
-  assets: GpuAssetCache;
-}
 
 export class WebGlRenderer implements RendererBackend {
   #viewport: Viewport = { size: { height: 0, width: 0 } };

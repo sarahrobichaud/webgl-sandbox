@@ -49,7 +49,7 @@ void main(){
 
     float grid = max(lx, lz);
 
-    vec3 color = mix(vec3(0,0,0), vec3(0.2,0.1,0.2), grid);
+    vec3 color = mix(vec3(0,0,0), vec3(0.4,0.1,0.4), grid);
     outColor = vec4(color, 1.0);
 }
 
