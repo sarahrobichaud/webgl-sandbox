@@ -1,10 +1,12 @@
 import type { Button } from "./button.contract";
 
-interface ActionBinding {
+export interface ActionBinding {
   key: Button;
 }
 
-export interface ActionRegistry {
-  global: Record<string, ActionBinding>;
-  [scope: string]: Record<string, ActionBinding>;
+export interface InputContext<TMappings extends Record<string, ActionBinding> = Record<string, ActionBinding>> {
+  contextId: number;
+  mappings: TMappings;
 }
+
+export type ActionRegistry = InputContext[];

@@ -1,33 +1,39 @@
-import type { ActionRegistry } from "../../contracts/input/actions.contract";
-import type { InputManager } from "../../contracts/internal";
-import { ActionMapper } from "./action-mapper";
 import { BrowserKeyboardInputs } from "./browser-keyboard-inputs";
 import { BrowserMouseInputs } from "./browser-mouse-inputs";
 
-export class ActionMonitor<Action extends string> {
-  #keyboard: BrowserKeyboardInputs;
-  #mouse: BrowserMouseInputs;
+export class InputManager {
+  #keyboard = new BrowserKeyboardInputs();
+  #mouse = new BrowserMouseInputs();
 
-  #activeScopes: number[] = [];
+  #target?: HTMLElement;
 
-  constructor() {
-    this.#keyboard = new BrowserKeyboardInputs();
-    this.#mouse = new BrowserMouseInputs();
+  constructor(target?: HTMLElement) {
+    this.#target = target;
   }
 
-  isActive(action: Action): boolean {}
-  wasActive(action: Action): boolean {}
-  wasReleased(action: Action): boolean {}
-
-  attach(target: Window | HTMLElement = window) {
-    this.detach();
-
-    this.#keyboard.attach(target);
-    this.#mouse.attach(target);
+  get mouse() {
+    return this.#mouse;
   }
 
-  detach() {
-    this.#keyboard.detach();
+  get keyboard() {
+    return this.#keyboard;
+  }
+
+  enable() {
+    this.#attach();
+  }
+
+  disable() {
+    this.#detach();
+  }
+
+  #attach() {
+    this.#mouse.attach(this.#target);
+    this.#keyboard.attach(this.#target);
+  }
+
+  #detach() {
     this.#mouse.detach();
+    this.#keyboard.detach();
   }
 }

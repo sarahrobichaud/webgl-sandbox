@@ -1,10 +1,9 @@
 import type { AssetCatalog } from "../contracts/assets/assets.contract";
 import { SceneId } from "../contracts/branded-values";
-import type { Mesh } from "../contracts/geometry/geometry.contract";
 import type { Renderer, Runtime, SceneManager, Session } from "../contracts/internal";
 import type { MountedScene, Scene } from "../contracts/scene/scene.contract";
 import { AssetStore } from "./assets/asset-manager";
-import { InputBridge } from "./input/input-bridge";
+import type { InputBridge } from "./input/input-bridge";
 import { Presenter } from "./scenes/presenter";
 
 export class SystemRuntime implements Runtime {
@@ -15,12 +14,12 @@ export class SystemRuntime implements Runtime {
   #input: InputBridge;
   #suspend = false;
 
-  constructor(session: Session, renderer: Renderer, assets: AssetStore, canvas: HTMLCanvasElement) {
+  constructor(session: Session, renderer: Renderer, assets: AssetStore, inputBridge: InputBridge, canvas: HTMLCanvasElement) {
     this.#session = session;
     this.#renderer = renderer;
     this.#presenter = new Presenter(canvas);
     this.#assets = assets;
-    this.#input = new InputBridge();
+    this.#input = inputBridge;
   }
 
   setActiveScene(id: SceneId) {
@@ -36,6 +35,10 @@ export class SystemRuntime implements Runtime {
   loadScenes(scenes: Scene[]): void {
     scenes.forEach((s) => {
       this.#presenter.registerScene(s);
+
+      if (s.actions) {
+        this.#input.registerActions(s.id, s.actions);
+      }
     });
   }
 
@@ -73,7 +76,7 @@ export class SystemRuntime implements Runtime {
   }
 
   #update(scene: MountedScene) {
-    scene.updateView({ input: new InputHub(), camera: scene.camera });
+    scene.updateView({ camera: scene.camera });
   }
 
   #draw(scene: MountedScene) {

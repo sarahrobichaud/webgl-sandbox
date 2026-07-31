@@ -2,6 +2,9 @@ import type { RendererBackend, Runtime, Session, System } from "./contracts/inte
 import type { RendererType } from "./contracts/rendering/renderer.contract";
 import type { Scene } from "./contracts/scene/scene.contract";
 import { AssetStore, type AssetRegistry } from "./runtime/assets/asset-manager";
+import { BindingMapper } from "./runtime/input/binding-mapper";
+import { InputBridge } from "./runtime/input/input-bridge";
+import { InputManager } from "./runtime/input/input-manager";
 import { SceneRenderer } from "./runtime/rendering/renderer";
 import { WebGlRenderer } from "./runtime/rendering/webgl/web-gl-renderer";
 import { SystemRuntime } from "./runtime/system-runtime";
@@ -11,6 +14,15 @@ import type { Simulation } from "./session/simulation";
 export interface InstanceConfiguration {
   parentElement: HTMLCanvasElement;
   renderer: RendererType;
+}
+
+function createInputBridge(target: HTMLElement) {
+  const inputManager = new InputManager(target);
+  const bindingMapper = new BindingMapper(inputManager);
+
+  const bridge = new InputBridge(bindingMapper);
+
+  return bridge;
 }
 
 function createRendererBackend(type: RendererType, canvas: HTMLCanvasElement): RendererBackend {
@@ -43,7 +55,8 @@ export class AeroSystem implements System {
     const session = new DefaultSession(simulations);
     const assetRegistry = new AssetStore();
     const renderer = createRenderer(backend, assetRegistry);
-    const runtime = new SystemRuntime(session, renderer, assetRegistry, config.parentElement);
+    const inputBridge = createInputBridge(config.parentElement);
+    const runtime = new SystemRuntime(session, renderer, assetRegistry, inputBridge, config.parentElement);
 
     return new AeroSystem(session, runtime, scenes);
   }
