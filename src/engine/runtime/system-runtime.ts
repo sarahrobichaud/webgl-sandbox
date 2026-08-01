@@ -3,7 +3,7 @@ import { SceneId } from "../contracts/branded-values";
 import type { Renderer, Runtime, SceneManager, Session } from "../contracts/internal";
 import type { MountedScene, Scene } from "../contracts/scene/scene.contract";
 import { AssetStore } from "./assets/asset-manager";
-import type { InputBridge } from "./input/input-bridge";
+import type { InputContextManager } from "./input/input-bridge";
 import { Presenter } from "./scenes/presenter";
 
 export class SystemRuntime implements Runtime {
@@ -11,10 +11,10 @@ export class SystemRuntime implements Runtime {
   #renderer: Renderer;
   #session: Session;
   #assets: AssetStore;
-  #input: InputBridge;
+  #input: InputContextManager<string>;
   #suspend = false;
 
-  constructor(session: Session, renderer: Renderer, assets: AssetStore, inputBridge: InputBridge, canvas: HTMLCanvasElement) {
+  constructor(session: Session, renderer: Renderer, assets: AssetStore, inputBridge: InputContextManager<string>, canvas: HTMLCanvasElement) {
     this.#session = session;
     this.#renderer = renderer;
     this.#presenter = new Presenter(canvas);
@@ -25,7 +25,7 @@ export class SystemRuntime implements Runtime {
   setActiveScene(id: SceneId) {
     this.#presenter.mount(id);
     this.#suspend = false;
-    this.#input.scope = id;
+    this.#input.setScope(id);
   }
 
   loadAssets(catalog: AssetCatalog): void {

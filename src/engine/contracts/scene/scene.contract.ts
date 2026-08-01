@@ -1,4 +1,4 @@
-import type { InputBridge } from "../../runtime/input/input-bridge";
+import type { InputContextManager } from "../../runtime/input/input-bridge";
 import type { SceneId } from "../branded-values";
 import type { ActionRegistry } from "../input/actions.contract";
 import type { Camera, CameraConfigurationKind } from "../rendering/camera.contract";
@@ -11,14 +11,14 @@ export interface Overlay {
  * View
  */
 
-export interface ViewContext {
+export interface ViewContext<Actions extends string = string> {
   camera: Camera;
-  input: InputBridge;
+  input: InputContextManager<Actions>;
 }
 
-export interface View {
+export interface View<Actions extends string = string> {
   getCamera(): CameraConfigurationKind;
-  onUpdate(context: ViewContext): void;
+  onUpdate(context: ViewContext<Actions>): void;
 }
 
 /**

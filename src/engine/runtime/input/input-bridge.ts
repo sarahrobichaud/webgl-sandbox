@@ -5,7 +5,15 @@ export interface RegisteredActionBinding extends ActionBinding {
   isPressed(): boolean;
 }
 
-export class InputBridge {
+export interface InputContextManager<T> {
+  setScope(value: number): void;
+
+  registerActions(scopeId: number, registry: ActionRegistry): void;
+
+  isActive(action: T): boolean;
+}
+
+export class InputBridge implements InputContextManager<string> {
   #bindingMapper: BindingMapper;
 
   #scopes = new Map<number, ActionRegistry>();
@@ -18,7 +26,7 @@ export class InputBridge {
     this.#bindingMapper = bindingMapper;
   }
 
-  set scope(value: number) {
+  setScope(value: number) {
     this.#scope = value;
   }
 
@@ -50,8 +58,6 @@ export class InputBridge {
     }
 
     this.#scopes.set(scopeId, registry);
-
-    console.log(this.#availableActions);
   }
 
   isActive(action: string) {
@@ -63,6 +69,6 @@ export class InputBridge {
 
     const binding = this.#bindings.get(action);
 
-    return binding?.isPressed();
+    return !!binding?.isPressed();
   }
 }
