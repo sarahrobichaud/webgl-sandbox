@@ -25,6 +25,7 @@ export class SystemRuntime implements Runtime {
   setActiveScene(id: SceneId) {
     this.#presenter.mount(id);
     this.#suspend = false;
+    this.#input.scope = id;
   }
 
   loadAssets(catalog: AssetCatalog): void {
@@ -76,7 +77,7 @@ export class SystemRuntime implements Runtime {
   }
 
   #update(scene: MountedScene) {
-    scene.updateView({ camera: scene.camera });
+    scene.updateView({ camera: scene.camera, input: this.#input });
   }
 
   #draw(scene: MountedScene) {

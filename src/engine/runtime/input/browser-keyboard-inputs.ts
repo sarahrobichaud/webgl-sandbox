@@ -6,7 +6,6 @@ export class BrowserKeyboardInputs implements InputReader<KeyboardButton> {
   #prevDown = new Set<KeyboardButton>();
   #pressed = new Set<KeyboardButton>();
   #released = new Set<KeyboardButton>();
-  #target: Window | HTMLElement | null = null;
 
   beginFrame() {
     this.#pressed.clear();
@@ -33,16 +32,16 @@ export class BrowserKeyboardInputs implements InputReader<KeyboardButton> {
   }
 
   attach(target: Window | HTMLElement = window) {
+    // TODO: FIX TARGET
     this.detach();
-    this.#target = target;
-    target.addEventListener("keydown", this.#onDown);
-    target.addEventListener("keyup", this.#onUp);
+    window.addEventListener("keydown", this.#onDown.bind(this));
+    window.addEventListener("keyup", this.#onUp);
     window.addEventListener("blur", this.#onBlur);
   }
 
   detach() {
-    this.#target?.removeEventListener("keydown", this.#onDown);
-    this.#target?.removeEventListener("keyup", this.#onUp);
+    window.removeEventListener("keydown", this.#onDown);
+    window.removeEventListener("keyup", this.#onUp);
     window.removeEventListener("blur", this.#onBlur);
   }
 

@@ -1,4 +1,4 @@
-import type { ActionBinding, ActionRegistry, InputContext } from "../../contracts/input/actions.contract";
+import type { ActionBinding, InputContext } from "../../contracts/input/actions.contract";
 import { Button, KeyboardButton, MouseButton } from "../../contracts/input/button.contract";
 import type { InputReader } from "../../contracts/internal";
 import type { RegisteredActionBinding } from "./input-bridge";

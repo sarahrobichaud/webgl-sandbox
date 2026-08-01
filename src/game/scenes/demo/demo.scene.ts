@@ -17,6 +17,8 @@ const panContext = {
   mappings: {
     PAN_UP: { key: KeyboardButton.KeyW },
     PAN_DOWN: { key: KeyboardButton.KeyS },
+    PAN_LEFT: { key: KeyboardButton.KeyD },
+    PAN_RIGHT: { key: KeyboardButton.KeyA },
   },
 } satisfies InputContext;
 
