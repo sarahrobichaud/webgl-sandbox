@@ -1,4 +1,5 @@
 import type { EntityId } from "../branded-values";
+import type { Visible } from "../rendering/visible.contract";
 import type { MotionData } from "../spatial/motion.contract";
 import type { Position, SpacialData } from "../spatial/spatial.contract";
 import type { ComponentStorage } from "./store.contract";
@@ -7,6 +8,7 @@ interface BaseStorage {
   positions: ComponentStorage<Position>;
   transforms: ComponentStorage<SpacialData>;
   motions: ComponentStorage<MotionData>;
+  visibles: ComponentStorage<Visible>;
 }
 
 export interface World extends BaseStorage {

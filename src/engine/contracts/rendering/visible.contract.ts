@@ -1,4 +1,7 @@
+export type VisibleType = "3D" | "2D";
+
 export interface Visible {
-  isVisible: boolean;
+  hidden: boolean;
+  type: VisibleType;
   assetKey: string;
 }

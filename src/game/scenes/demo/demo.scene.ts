@@ -17,16 +17,24 @@ const panContext = {
   mappings: {
     PAN_UP: { key: KeyboardButton.KeyW },
     PAN_DOWN: { key: KeyboardButton.KeyS },
-    PAN_LEFT: { key: KeyboardButton.KeyD },
-    PAN_RIGHT: { key: KeyboardButton.KeyA },
+    PAN_LEFT: { key: KeyboardButton.KeyA },
+    PAN_RIGHT: { key: KeyboardButton.KeyD },
+  },
+} satisfies InputContext;
+const rotateContext = {
+  contextId: 3,
+  mappings: {
+    ROTATE_X: { key: KeyboardButton.KeyX },
+    ROTATE_Y: { key: KeyboardButton.KeyY },
+    ROTATE_Z: { key: KeyboardButton.KeyZ },
   },
 } satisfies InputContext;
 
 const demoActions = [
-  zoomContext, panContext,
+  zoomContext, panContext, rotateContext,
 ];
 
-export type DemoActions = keyof typeof zoomContext.mappings | keyof typeof panContext.mappings;
+export type DemoActions = keyof typeof zoomContext.mappings | keyof typeof panContext.mappings | keyof typeof rotateContext.mappings;
 
 export function buildDemoScene(): Scene {
   const view = new DemoView();

@@ -7,6 +7,7 @@ import type { MountedScene, Scene, SceneRenderContext } from "./scene/scene.cont
 import type { Position, SpacialData } from "./spatial/spatial.contract";
 import type { AssetCatalog, MeshAssetDescription } from "./assets/assets.contract";
 import type { GpuAssetCache } from "../runtime/rendering/webgl/gpu-asset-cache";
+import type { RuntimeContext } from "../runtime/system-runtime";
 
 export interface SceneSchema {
   actions: string;
@@ -56,7 +57,7 @@ export interface Scheduler {}
 export interface Renderer {
   startFrame(): void;
   prepareAssets(): void;
-  render(context: SceneRenderContext): void;
+  render(context: RuntimeContext): void;
 }
 
 export interface VertexLayout {
@@ -67,6 +68,10 @@ export interface VertexLayout {
 export interface GpuHandle {
   key: string;
   vao: WebGLVertexArrayObject;
+  origin: [
+    number, number, number,
+  ];
+  verticies: number;
 }
 
 export interface AssetIntake {

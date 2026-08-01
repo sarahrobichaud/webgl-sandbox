@@ -1,10 +1,16 @@
 import type { AssetCatalog } from "../contracts/assets/assets.contract";
 import { SceneId } from "../contracts/branded-values";
+import type { World } from "../contracts/data/world.contract";
 import type { Renderer, Runtime, SceneManager, Session } from "../contracts/internal";
 import type { MountedScene, Scene } from "../contracts/scene/scene.contract";
 import { AssetStore } from "./assets/asset-manager";
 import type { InputContextManager } from "./input/input-bridge";
 import { Presenter } from "./scenes/presenter";
+
+export interface RuntimeContext {
+  scene: MountedScene;
+  world: World;
+}
 
 export class SystemRuntime implements Runtime {
   #presenter: SceneManager;
@@ -43,17 +49,18 @@ export class SystemRuntime implements Runtime {
     });
   }
 
-  #getLoadedScene() {
+  #getContext() {
     const currentScene = this.#presenter.current;
+    const world = this.#session.activeWorld;
 
-    if (!this.#session.activeWorld) {
+    if (!world) {
       throw new Error("No world loaded!");
     }
 
     if (!currentScene) {
       throw new Error("No scene loaded!");
     }
-    return currentScene;
+    return { scene: currentScene, world };
   }
 
   loop(lastTimeMs: number = 0) {
@@ -64,10 +71,10 @@ export class SystemRuntime implements Runtime {
     }
 
     try {
-      const currentScene = this.#getLoadedScene();
+      const ctx = this.#getContext();
 
-      this.#update(currentScene);
-      this.#draw(currentScene);
+      this.#update(ctx);
+      this.#draw(ctx);
     } catch (e) {
       console.warn(e);
       this.#suspend = true;
@@ -76,11 +83,11 @@ export class SystemRuntime implements Runtime {
     window.requestAnimationFrame(this.loop.bind(this));
   }
 
-  #update(scene: MountedScene) {
+  #update({ scene, world }: RuntimeContext) {
     scene.updateView({ camera: scene.camera, input: this.#input });
   }
 
-  #draw(scene: MountedScene) {
-    this.#renderer.render(scene);
+  #draw(ctx: RuntimeContext) {
+    this.#renderer.render(ctx);
   }
 }

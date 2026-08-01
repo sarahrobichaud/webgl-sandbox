@@ -50,6 +50,10 @@ export class WebGlRenderer implements RendererBackend {
     return {
       vao: this.#aero.loadGeometry(VERTEX_LAYOUT, description.data),
       key,
+      verticies: description.data.vertices.length,
+      origin: description.data.origin ?? [
+        0, 0, 0,
+      ],
     };
   }
 
@@ -78,7 +82,7 @@ export class WebGlRenderer implements RendererBackend {
   }
 
   // Floor: unit XZ plane; scaleX/scaleZ = tiles across (see grid-system.md)
-  #position = { x: 2, y: 2, z: 2 };
+  #position = { x: 0, y: 0, z: 0 };
   #transform = {
     scale: {
       x: 100,
@@ -100,13 +104,15 @@ export class WebGlRenderer implements RendererBackend {
   renderGrid(context: FrameRenderingContext) {
     this.#gl.useProgram(this.#programs.grid.program);
 
-    const vao = context.assets.get("plane").vao;
+    const plane = context.assets.get("plane");
+
+    const vao = plane.vao;
 
     this.#gl.bindVertexArray(vao);
 
     // Grid needs the real world matrix for v_worldPos — not the normal matrix
     // (transpose(inverse(world))) that basic uses for lighting.
-    const { worldViewProjection, world } = this.#computeDynamicUniforms(context.viewProjection, this.#position, this.#transform);
+    const { worldViewProjection, world } = this.#computeDynamicUniforms(context.viewProjection, this.#position, this.#transform, plane.origin);
 
     const uni = this.#programs.grid.sharedUniforms;
 
@@ -121,25 +127,18 @@ export class WebGlRenderer implements RendererBackend {
     this.setStaticUniforms();
   }
 
-  render(context: FrameRenderingContext, mesh: string, position: Position, transform: SpacialData) {
-    const vao = context.assets.get(mesh).vao;
-    this.#gl.bindVertexArray(vao);
+  render(context: FrameRenderingContext, meshId: string, position: Position, transform: SpacialData) {
+    const mesh = context.assets.get(meshId);
+    this.#gl.bindVertexArray(mesh.vao);
 
-    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(
-      context.viewProjection,
-      position,
-      transform,
-      [
-        0, 0, 0,
-      ],
-    );
+    const { worldViewProjection, transposedInvertedWorldTransforms } = this.#computeDynamicUniforms(context.viewProjection, position, transform, mesh.origin);
 
     const uni = this.#programs.basic.sharedUniforms;
 
     this.#gl.uniformMatrix4fv(uni.u_worldViewProjection.location, false, worldViewProjection);
     this.#gl.uniformMatrix4fv(uni.u_world.location, false, transposedInvertedWorldTransforms);
 
-    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, 36 / 3);
+    this.#gl.drawArrays(this.#gl.TRIANGLES, 0, mesh.verticies / 3);
   }
 
   #computeWorldTransforms(
@@ -158,9 +157,12 @@ export class WebGlRenderer implements RendererBackend {
     mat4.rotateX(world, world, (transform.rotation.x * Math.PI) / 180);
     mat4.rotateY(world, world, (transform.rotation.y * Math.PI) / 180);
     mat4.rotateZ(world, world, (transform.rotation.z * Math.PI) / 180);
+
     mat4.scale(world, world, [
       transform.scale.x, transform.scale.y, transform.scale.z,
     ]);
+
+    mat4.translate(world, world, vec3.fromValues(transform.position.x, transform.position.y, transform.position.z));
 
     if (origin) {
       mat4.translate(world, world, vec3.fromValues(-origin[0], -origin[1], -origin[2]));

@@ -3,6 +3,8 @@ import type { RendererBackend, Renderer, FrameRenderingContext } from "../../con
 import type { SceneRenderContext } from "../../contracts/scene/scene.contract";
 import type { AssetRegistry } from "../assets/asset-manager";
 import { GpuAssetStore } from "./webgl/gpu-asset-cache";
+import type { RuntimeContext } from "../system-runtime";
+import type { World } from "../../contracts/data/world.contract";
 
 export class SceneRenderer implements Renderer {
   #backend: RendererBackend;
@@ -36,17 +38,31 @@ export class SceneRenderer implements Renderer {
     this.#backend.clear();
   }
 
-  render({ camera }: SceneRenderContext): void {
-    this.#ctx.viewProjection = camera.getViewPerspective();
+  render({ scene, world }: RuntimeContext): void {
+    this.#ctx.viewProjection = scene.camera.getViewPerspective();
     this.#drawEnvironment();
+    this.#drawWorld(world);
   }
 
   #drawEnvironment() {
     this.#backend.renderGrid(this.#ctx);
   }
 
-  #drawWorld() {
+  #drawWorld(world: World) {
     this.#backend.setup("basic");
+
+    for (const [
+      key, visible,
+    ] of world.visibles.entries()) {
+      const pos = world.positions.get(key);
+      const trans = world.transforms.get(key);
+
+      if (!pos || !trans) {
+        return;
+      }
+
+      this.#backend.render(this.#ctx, visible.assetKey, pos, trans);
+    }
   }
   #drawOverlays() {}
 }

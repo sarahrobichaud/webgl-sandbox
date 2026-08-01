@@ -6,7 +6,7 @@ export type Context = ViewContext<DemoActions>;
 
 export class DemoView implements View<DemoActions> {
   #pos = { x: 0, y: 0, z: 0 };
-  #rotation = { x: -85, y: 0, z: 0 };
+  #rotation = { x: -80, y: 5, z: -5 };
   #zoom = 1;
 
   #speed = 0.1;
@@ -14,18 +14,33 @@ export class DemoView implements View<DemoActions> {
   onUpdate(ctx: Context) {
     this.#handlePan(ctx);
     this.#handleZoom(ctx);
+    this.#handleRotate(ctx);
   }
 
   #handleZoom({ camera, input }: Context) {
-    if (input.isActive("ZOOM_IN") && this.#zoom < 3) {
+    if (input.isActive("ZOOM_IN") && this.#zoom < 10) {
       this.#zoom *= 1.01;
     }
 
-    if (input.isActive("ZOOM_OUT") && this.#zoom > 0.5) {
+    if (input.isActive("ZOOM_OUT") && this.#zoom > 0.1) {
       this.#zoom /= 1.01;
     }
 
     camera.setZoom(this.#zoom);
+  }
+
+  #handleRotate({ camera, input }: Context) {
+    if (input.isActive("ROTATE_X")) {
+      this.#rotation.x += 0.1;
+    }
+    if (input.isActive("ROTATE_Y")) {
+      this.#rotation.y += 0.1;
+    }
+    if (input.isActive("ROTATE_Z")) {
+      this.#rotation.z += 0.1;
+    }
+
+    camera.setRotation(this.#rotation);
   }
 
   #handlePan({ camera, input }: Context) {
@@ -37,11 +52,11 @@ export class DemoView implements View<DemoActions> {
       this.#pos.z -= this.#speed;
     }
     if (input.isActive("PAN_RIGHT")) {
-      this.#pos.x -= this.#speed;
+      this.#pos.x += this.#speed;
     }
 
     if (input.isActive("PAN_LEFT")) {
-      this.#pos.x += this.#speed;
+      this.#pos.x -= this.#speed;
     }
 
     camera.setPosition(this.#pos);
