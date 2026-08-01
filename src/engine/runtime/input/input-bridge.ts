@@ -45,7 +45,6 @@ export class InputBridge implements InputContextManager<string> {
 
       let existing = this.#availableActions.get(scopeId);
 
-      console.log({ actions, existing });
       if (!existing) {
         existing = [
           ...actions,

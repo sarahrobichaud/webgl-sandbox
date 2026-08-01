@@ -39,12 +39,9 @@ export class AssetStore implements AssetRegistry {
   getPending(): AssetEntry[] {
     const pending = [];
 
-    console.log(this);
-
     for (const [
-      key, value,
+      _key, value,
     ] of this.#geometry) {
-      console.log(value);
       if (value.status === "pending") {
         pending.push(value);
       }
