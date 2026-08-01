@@ -6,7 +6,7 @@ export type Context = ViewContext<DemoActions>;
 
 export class DemoView implements View<DemoActions> {
   #pos = { x: 0, y: 0, z: 0 };
-  #rotation = { x: -80, y: 5, z: -5 };
+  #rotation = { x: -75, y: -20, z: 0 };
   #zoom = 1;
 
   #speed = 0.1;
