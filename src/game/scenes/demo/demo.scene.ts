@@ -21,6 +21,7 @@ const panContext = {
     PAN_RIGHT: { key: KeyboardButton.KeyD },
   },
 } satisfies InputContext;
+
 const rotateContext = {
   contextId: 3,
   mappings: {

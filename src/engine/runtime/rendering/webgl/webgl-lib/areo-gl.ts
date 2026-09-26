@@ -1,4 +1,3 @@
-import type { MeshAssetDescription } from "../../../../contracts/assets/assets.contract";
 import type { Mesh } from "../../../../contracts/geometry/geometry.contract";
 import type { VertexLayout } from "../../../../contracts/internal";
 import type { Program, Shaders } from "../../../../contracts/rendering/renderer.contract";
@@ -9,10 +8,10 @@ const ACTIVE_UNIFORMS = 0x8b86;
 const FLOAT = 0x1406;
 
 export class AreoGL {
-  #c: WebGL2RenderingContext;
+  #ctx: WebGL2RenderingContext;
 
   constructor(gl: WebGL2RenderingContext) {
-    this.#c = gl;
+    this.#ctx = gl;
   }
   /**
    * Public
@@ -24,20 +23,20 @@ export class AreoGL {
    * @returns the program
    */
   createProgram(name: string, shaders: Shaders) {
-    const vShader = this.#createShader(this.#c.VERTEX_SHADER, shaders.vertex);
-    const fShader = this.#createShader(this.#c.FRAGMENT_SHADER, shaders.fragment);
+    const vShader = this.#createShader(this.#ctx.VERTEX_SHADER, shaders.vertex);
+    const fShader = this.#createShader(this.#ctx.FRAGMENT_SHADER, shaders.fragment);
 
-    const program = this.#c.createProgram();
-    this.#c.ACTIVE_UNIFORMS;
-    this.#c.attachShader(program, vShader);
-    this.#c.attachShader(program, fShader);
-    this.#c.linkProgram(program);
+    const program = this.#ctx.createProgram();
+    this.#ctx.ACTIVE_UNIFORMS;
+    this.#ctx.attachShader(program, vShader);
+    this.#ctx.attachShader(program, fShader);
+    this.#ctx.linkProgram(program);
 
-    const success = this.#c.getProgramParameter(program, this.#c.LINK_STATUS);
+    const success = this.#ctx.getProgramParameter(program, this.#ctx.LINK_STATUS);
 
     if (!success) {
-      const log = this.#c.getProgramInfoLog(program);
-      this.#c.deleteProgram(program);
+      const log = this.#ctx.getProgramInfoLog(program);
+      this.#ctx.deleteProgram(program);
       throw new Error(`Program link failed (${name}): ${log}`);
     }
 
@@ -50,13 +49,13 @@ export class AreoGL {
    * @param meshes - All meshes
    */
   loadGeometry(layout: VertexLayout, data: Mesh) {
-    const vao = this.#c.createVertexArray();
-    this.#c.bindVertexArray(vao);
+    const vao = this.#ctx.createVertexArray();
+    this.#ctx.bindVertexArray(vao);
 
     this.#uploadAttribute(layout.POSITION, data.vertices);
     this.#uploadAttribute(layout.NORMAL, data.normals);
 
-    this.#c.bindVertexArray(null);
+    this.#ctx.bindVertexArray(null);
 
     return vao;
   }
@@ -79,11 +78,11 @@ export class AreoGL {
    * @param data - The data
    */
   #uploadAttribute(location: number, data: number[]) {
-    const buffer = this.#c.createBuffer();
-    this.#c.bindBuffer(this.#c.ARRAY_BUFFER, buffer);
-    this.#c.bufferData(this.#c.ARRAY_BUFFER, new Float32Array(data), this.#c.STATIC_DRAW);
-    this.#c.enableVertexAttribArray(location);
-    this.#c.vertexAttribPointer(location, 3, FLOAT, false, 0, 0);
+    const buffer = this.#ctx.createBuffer();
+    this.#ctx.bindBuffer(this.#ctx.ARRAY_BUFFER, buffer);
+    this.#ctx.bufferData(this.#ctx.ARRAY_BUFFER, new Float32Array(data), this.#ctx.STATIC_DRAW);
+    this.#ctx.enableVertexAttribArray(location);
+    this.#ctx.vertexAttribPointer(location, 3, FLOAT, false, 0, 0);
   }
 
   /**
@@ -95,7 +94,7 @@ export class AreoGL {
     const uniforms = {} as Record<string, WebGLActiveInfo & { location: WebGLUniformLocation }>;
 
     for (let i = 0; i < this.#getActiveUniformsCount(program); i++) {
-      const info = this.#c.getActiveUniform(program, i);
+      const info = this.#ctx.getActiveUniform(program, i);
 
       if (!info) {
         throw new Error("Info should be defined, something is wrong");
@@ -105,7 +104,7 @@ export class AreoGL {
         continue;
       }
 
-      const location = this.#c.getUniformLocation(program, info.name);
+      const location = this.#ctx.getUniformLocation(program, info.name);
 
       if (!location) {
         throw new Error("location should exist, somehting is wrong");
@@ -122,7 +121,7 @@ export class AreoGL {
   }
 
   /**
-   * Gets all active attributes of a program and their information
+   * Gets all active attributes of a program and its information
    * @param program - The program
    * @returns - Attribute object map
    */
@@ -130,7 +129,7 @@ export class AreoGL {
     const attributes = {} as Record<string, WebGLActiveInfo & { location: number }>;
 
     for (let i = 0; i < this.#getActiveAttributesCount(program); i++) {
-      const info = this.#c.getActiveAttrib(program, i);
+      const info = this.#ctx.getActiveAttrib(program, i);
 
       if (!info) {
         throw new Error("Info should be defined, something is wrong");
@@ -140,7 +139,7 @@ export class AreoGL {
         continue;
       }
 
-      const location = this.#c.getAttribLocation(program, info.name);
+      const location = this.#ctx.getAttribLocation(program, info.name);
 
       attributes[info.name] = {
         name: info.name,
@@ -158,7 +157,7 @@ export class AreoGL {
    * @returns - Number of active attributes
    */
   #getActiveAttributesCount(program: WebGLProgram) {
-    return this.#c.getProgramParameter(program, ACTIVE_ATTRIBUTES);
+    return this.#ctx.getProgramParameter(program, ACTIVE_ATTRIBUTES);
   }
 
   /**
@@ -167,7 +166,7 @@ export class AreoGL {
    * @returns - Number of active uniforms
    */
   #getActiveUniformsCount(program: WebGLProgram) {
-    return this.#c.getProgramParameter(program, ACTIVE_UNIFORMS);
+    return this.#ctx.getProgramParameter(program, ACTIVE_UNIFORMS);
   }
 
   /**
@@ -180,16 +179,16 @@ export class AreoGL {
    * @returns - The shader
    */
   #createShader(type: number, source: string) {
-    const shader = this.#c.createShader(type)!;
-    this.#c.shaderSource(shader, source);
-    this.#c.compileShader(shader);
+    const shader = this.#ctx.createShader(type)!;
+    this.#ctx.shaderSource(shader, source);
+    this.#ctx.compileShader(shader);
 
-    const success = this.#c.getShaderParameter(shader, this.#c.COMPILE_STATUS);
+    const success = this.#ctx.getShaderParameter(shader, this.#ctx.COMPILE_STATUS);
 
     if (!success) {
-      const log = this.#c.getShaderInfoLog(shader);
-      this.#c.deleteShader(shader);
-      const kind = type === this.#c.VERTEX_SHADER ? "vertex" : "fragment";
+      const log = this.#ctx.getShaderInfoLog(shader);
+      this.#ctx.deleteShader(shader);
+      const kind = type === this.#ctx.VERTEX_SHADER ? "vertex" : "fragment";
       throw new Error(`Shader compile failed (${kind}): ${log}`);
     }
 

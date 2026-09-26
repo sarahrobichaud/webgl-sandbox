@@ -40,7 +40,7 @@ void main() {
 
   outColor = vec4(v_color,1);
 
-  // outColor.rgb *= light;
+  outColor.rgb *= light;
 }
 `;
 

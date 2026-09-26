@@ -1,6 +1,5 @@
 import { mat4 } from "gl-matrix";
 import type { RendererBackend, Renderer, FrameRenderingContext } from "../../contracts/internal";
-import type { SceneRenderContext } from "../../contracts/scene/scene.contract";
 import type { AssetRegistry } from "../assets/asset-manager";
 import { GpuAssetStore } from "./webgl/gpu-asset-cache";
 import type { RuntimeContext } from "../system-runtime";
